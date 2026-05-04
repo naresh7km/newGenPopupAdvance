@@ -13,7 +13,7 @@ concurrency:
 jobs:
   create-site:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
 
     env:
       FORGE_API_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
@@ -37,7 +37,7 @@ jobs:
           test -n "$FORGE_SOURCE_BRANCH" || (echo "Missing FORGE_SOURCE_BRANCH variable" && exit 1)
           test -n "$TARGET_INDEX_FILE" || (echo "Missing TARGET_INDEX_FILE variable" && exit 1)
           test -n "$TARGET_MAP_ORIGIN" || (echo "Missing TARGET_MAP_ORIGIN variable" && exit 1)
-          test -f "$TARGET_INDEX_FILE" || (echo "Cannot find $TARGET_INDEX_FILE in repo root" && exit 1)
+          test -f "$TARGET_INDEX_FILE" || (echo "Cannot find $TARGET_INDEX_FILE" && exit 1)
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -88,6 +88,49 @@ jobs:
               return $slug;
           }
 
+          function objectToArray($value): array
+          {
+              return json_decode(json_encode($value), true) ?: [];
+          }
+
+          function findForgeSiteUrl(array $siteData): ?string
+          {
+              $possibleKeys = [
+                  'forge_site_url',
+                  'forgeSiteUrl',
+                  'forge_url',
+                  'forgeUrl',
+                  'url',
+              ];
+
+              foreach ($possibleKeys as $key) {
+                  if (! empty($siteData[$key]) && is_string($siteData[$key])) {
+                      return normalizeUrl($siteData[$key]);
+                  }
+              }
+
+              if (! empty($siteData['site']) && is_array($siteData['site'])) {
+                  return findForgeSiteUrl($siteData['site']);
+              }
+
+              return null;
+          }
+
+          function normalizeUrl(string $url): string
+          {
+              $url = trim($url);
+
+              if ($url === '') {
+                  return $url;
+              }
+
+              if (! str_starts_with($url, 'http://') && ! str_starts_with($url, 'https://')) {
+                  $url = 'https://' . $url;
+              }
+
+              return rtrim($url, '/');
+          }
+
           function updateMappingFile(string $filePath, string $originUrl, string $newUrl): void
           {
               if (! file_exists($filePath)) {
@@ -110,7 +153,7 @@ jobs:
 
               if ($count !== 1) {
                   fwrite(STDERR, "Could not find exactly one target mapping for origin URL: {$originUrl}\n");
-                  fwrite(STDERR, "Expected format similar to:\n");
+                  fwrite(STDERR, "Expected this kind of format:\n");
                   fwrite(STDERR, "\"{$originUrl}\": { method: \"iframe\", target: \"https://old-url.com\" }\n");
                   exit(1);
               }
@@ -124,35 +167,82 @@ jobs:
           $branch = envValue('FORGE_SOURCE_BRANCH', 'main');
           $targetFile = envValue('TARGET_INDEX_FILE', 'server.js');
           $originUrl = envValue('TARGET_MAP_ORIGIN');
-          $prefix = envValue('FORGE_DOMAIN_PREFIX', 'popup');
+          $prefix = envValue('FORGE_DOMAIN_PREFIX', 'jp-core');
           $installWaitSeconds = (int) envValue('SITE_INSTALL_WAIT_SECONDS', '180');
 
           $siteSlug = $prefix . '-' . randomSlug(10);
-          $domain = $siteSlug . '.on-forge.com';
-          $newUrl = 'https://' . $domain;
 
-          echo "Creating Forge static HTML site: {$domain}\n";
+          /*
+           * Important:
+           * We are NOT using this as the final public URL.
+           * Forge should return the real free on-forge.com URL.
+           */
+          $primaryDomain = $siteSlug . '.example.com';
+
+          echo "Creating Forge static HTML site...\n";
+          echo "Temporary primary domain: {$primaryDomain}\n";
           echo "Source repo: {$repository}\n";
           echo "Branch: {$branch}\n";
-          echo "Web directory will be: /public\n";
+          echo "Web directory: /public\n";
 
           $forge = new Forge($token);
           $forge->setTimeout(180);
 
           $site = $forge->createSite($serverId, [
-              'domain' => $domain,
+              'domain' => $primaryDomain,
               'project_type' => 'html',
               'directory' => '/public',
           ]);
 
-          echo "Created site ID: {$site->id}\n";
+          $siteData = objectToArray($site);
+          file_put_contents(
+              'forge-created-site-debug.json',
+              json_encode($siteData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+          );
+
+          echo "Created site raw response:\n";
+          echo json_encode($siteData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
+
+          $siteId = $siteData['id'] ?? $siteData['site']['id'] ?? null;
+
+          if (! $siteId) {
+              fwrite(STDERR, "Could not find Forge site ID in API response.\n");
+              fwrite(STDERR, "Check forge-created-site-debug.json in the failed Action logs.\n");
+              exit(1);
+          }
+
+          echo "Created site ID: {$siteId}\n";
 
           echo "Waiting {$installWaitSeconds} seconds for Forge site setup...\n";
           sleep($installWaitSeconds);
 
+          echo "Refreshing site data from Forge...\n";
+          $freshSite = $forge->site($serverId, $siteId);
+          $freshSiteData = objectToArray($freshSite);
+
+          file_put_contents(
+              'forge-refreshed-site-debug.json',
+              json_encode($freshSiteData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+          );
+
+          echo "Refreshed site response:\n";
+          echo json_encode($freshSiteData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
+
+          $forgeUrl = findForgeSiteUrl($freshSiteData);
+
+          if (! $forgeUrl || ! str_contains($forgeUrl, 'on-forge.com')) {
+              fwrite(STDERR, "\nForge did not return a usable free on-forge.com URL.\n");
+              fwrite(STDERR, "This means the API/SDK path we are using is creating the Nginx site, but not attaching the new Forge Domain system.\n");
+              fwrite(STDERR, "Look inside forge-refreshed-site-debug.json in the Action logs.\n");
+              fwrite(STDERR, "Do not continue because updating GitHub with a guessed URL would create another broken link.\n");
+              exit(1);
+          }
+
+          echo "Real Forge URL found: {$forgeUrl}\n";
+
           echo "Installing GitHub repository on Forge site...\n";
 
-          $forge->installGitRepositoryOnSite($serverId, $site->id, [
+          $forge->installGitRepositoryOnSite($serverId, $siteId, [
               'provider' => 'github',
               'repository' => $repository,
               'branch' => $branch,
@@ -162,41 +252,37 @@ jobs:
           echo "Waiting 120 seconds for Git install...\n";
           sleep(120);
 
-          echo "Setting deployment script that supports both /current and normal Forge folders...\n";
+          echo "Setting static HTML deploy script...\n";
 
           $deployScript = <<<BASH
-          SITE_PATH="/home/forge/{$domain}"
-
-          if [ -d "\$SITE_PATH/current" ]; then
-              echo "Using zero-downtime current directory"
-              cd "\$SITE_PATH/current"
+          if [ -n "\$FORGE_SITE_PATH" ] && [ -d "\$FORGE_SITE_PATH" ]; then
+              cd "\$FORGE_SITE_PATH"
           else
-              echo "Using normal site directory"
-              cd "\$SITE_PATH"
+              cd /home/forge/{$primaryDomain}
           fi
 
           git fetch origin {$branch}
           git reset --hard origin/{$branch}
           git clean -fd
 
-          echo "Deployment finished"
+          echo "Static HTML deployment finished"
           BASH;
 
-          $forge->updateSiteDeploymentScript($serverId, $site->id, $deployScript);
+          $forge->updateSiteDeploymentScript($serverId, $siteId, $deployScript);
 
           echo "Triggering first deploy...\n";
-          $forge->deploySite($serverId, $site->id, false);
+          $forge->deploySite($serverId, $siteId, false);
 
-          echo "Waiting 120 seconds after deploy trigger...\n";
-          sleep(120);
+          echo "Waiting 150 seconds after deploy trigger...\n";
+          sleep(150);
 
-          echo "Updating {$targetFile}: target for {$originUrl} => {$newUrl}\n";
-          updateMappingFile($targetFile, $originUrl, $newUrl);
+          echo "Updating {$targetFile}: target for {$originUrl} => {$forgeUrl}\n";
+          updateMappingFile($targetFile, $originUrl, $forgeUrl);
 
-          file_put_contents('forge-created-site.txt', $newUrl . PHP_EOL);
-          file_put_contents('forge-created-site-id.txt', (string) $site->id . PHP_EOL);
+          file_put_contents('forge-created-site.txt', $forgeUrl . PHP_EOL);
+          file_put_contents('forge-created-site-id.txt', (string) $siteId . PHP_EOL);
 
-          echo "Done. New URL: {$newUrl}\n";
+          echo "Done. Real Forge URL: {$forgeUrl}\n";
           PHP
 
           php forge-create-site.php
@@ -216,7 +302,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add "$TARGET_INDEX_FILE" forge-created-site.txt forge-created-site-id.txt
+          git add "$TARGET_INDEX_FILE" forge-created-site.txt forge-created-site-id.txt forge-created-site-debug.json forge-refreshed-site-debug.json
 
           if git diff --cached --quiet; then
             echo "No changes to commit."
