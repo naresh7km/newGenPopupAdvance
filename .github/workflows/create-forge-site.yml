@@ -146,7 +146,7 @@ jobs:
           $site = $forge->createSite($serverId, [
               'domain' => $domain,
               'project_type' => 'html',
-              'directory' => '/',
+              'directory' => '/public',
           ]);
 
           echo "Created site ID: {$site->id}\n";
