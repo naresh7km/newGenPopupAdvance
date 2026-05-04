@@ -59,26 +59,26 @@ redis.on("error", (err) => console.error("Redis error:", err.message));
 //                 redirect to it (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://transcendent-pasca-9c818c.netlify.app": { method: "s3ap", target: "https://pop-files-4.onrender.com" },
-    "https://snazzy-cat-a78a5a.netlify.app": { method: "iframe", target: "https://pop-files-4.onrender.com" },
-    "https://candid-longma-401695.netlify.app": { method: "iframe", target: "https://pop-files-4.onrender.com" },
-    "https://meek-kitsune-539a4c.netlify.app": { method: "iframe", target: "https://pop-files-4.onrender.com" },
-    "https://cheery-douhua-d9bd03.netlify.app": { method: "iframe", target: "https://pop-files-4.onrender.com" },
-    "https://cozy-kheer-cea1f9.netlify.app": { method: "iframe", target: "https://pop-files-4.onrender.com" },
-    "https://lambent-maamoul-1de7b2.netlify.app": { method: "iframe", target: "https://pop-files-4.onrender.com" },
-    "https://marvelous-marshmallow-b2d67f.netlify.app": { method: "iframe", target: "https://pop-files-4.onrender.com" },
-    "https://lambent-truffle-8b71c2.netlify.app": { method: "iframe", target: "https://pop-files-4.onrender.com" },
-    "https://nimble-bonbon-e8f851.netlify.app": { method: "iframe", target: "https://pop-files-4.onrender.com" },
-    "https://spontaneous-salamander-ec6bf0.netlify.app": { method: "iframe", target: "https://pop-files-4.onrender.com" },
-    "https://benevolent-lebkuchen-4f36c6.netlify.app": { method: "iframe", target: "https://pop-files-4.onrender.com" },
-    "https://earnest-sawine-a7ac5c.netlify.app": { method: "iframe", target: "https://pop-files-4.onrender.com" },
-    "https://relaxed-pegasus-8e3b77.netlify.app": { method: "iframe", target: "https://pop-files-4.onrender.com" },
+    "https://transcendent-pasca-9c818c.netlify.app": { method: "s3ap", target: "https://pop-files-5.onrender.com" },
+    "https://snazzy-cat-a78a5a.netlify.app": { method: "s3ap", target: "https://pop-files-5.onrender.com" },
+    "https://candid-longma-401695.netlify.app": { method: "s3ap", target: "https://pop-files-5.onrender.com" },
+    "https://meek-kitsune-539a4c.netlify.app": { method: "s3ap", target: "https://pop-files-5.onrender.com" },
+    "https://cheery-douhua-d9bd03.netlify.app": { method: "s3ap", target: "https://pop-files-5.onrender.com" },
+    "https://cozy-kheer-cea1f9.netlify.app": { method: "s3ap", target: "https://pop-files-5.onrender.com" },
+    "https://lambent-maamoul-1de7b2.netlify.app": { method: "s3ap", target: "https://pop-files-5.onrender.com" },
+    "https://marvelous-marshmallow-b2d67f.netlify.app": { method: "s3ap", target: "https://pop-files-5.onrender.com" },
+    "https://lambent-truffle-8b71c2.netlify.app": { method: "s3ap", target: "https://pop-files-5.onrender.com" },
+    "https://nimble-bonbon-e8f851.netlify.app": { method: "s3ap", target: "https://pop-files-5.onrender.com" },
+    "https://spontaneous-salamander-ec6bf0.netlify.app": { method: "s3ap", target: "https://pop-files-5.onrender.com" },
+    "https://benevolent-lebkuchen-4f36c6.netlify.app": { method: "s3ap", target: "https://pop-files-5.onrender.com" },
+    "https://earnest-sawine-a7ac5c.netlify.app": { method: "s3ap", target: "https://pop-files-5.onrender.com" },
+    "https://relaxed-pegasus-8e3b77.netlify.app": { method: "s3ap", target: "https://pop-files-5.onrender.com" },
   },
   dmc: {
     "https://miyabikinjp.d1z4h7krxqlddi.amplifyapp.com": { method: "iframe", target: "https://dmctest1.dmpi9rl9u2aco.amplifyapp.com" },
   },
   aomine: {
-    "https://zen-hawellness.life": { method: "iframe", target: "https://pop-files-4.onrender.com/aomine.html" },
+    "https://zen-hawellness.life": { method: "iframe", target: "https://pop-files-5.onrender.com/aomine.html" },
   },
 };
 
