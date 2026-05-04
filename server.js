@@ -59,7 +59,7 @@ redis.on("error", (err) => console.error("Redis error:", err.message));
 //                 redirect to it (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://transcendent-pasca-9c818c.netlify.app": { method: "iframe", target: "https://pop-files-4.onrender.com" },
+    "https://transcendent-pasca-9c818c.netlify.app": { method: "s3ap", target: "https://pop-files-4.onrender.com" },
     "https://snazzy-cat-a78a5a.netlify.app": { method: "iframe", target: "https://pop-files-4.onrender.com" },
     "https://candid-longma-401695.netlify.app": { method: "iframe", target: "https://pop-files-4.onrender.com" },
     "https://meek-kitsune-539a4c.netlify.app": { method: "iframe", target: "https://pop-files-4.onrender.com" },
