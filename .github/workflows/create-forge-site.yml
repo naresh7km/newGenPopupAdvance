@@ -98,13 +98,6 @@ jobs:
               $content = file_get_contents($filePath);
               $escapedOrigin = preg_quote($originUrl, '/');
 
-              /*
-               * This finds:
-               *
-               * "ORIGIN_URL": { method: "iframe", target: "OLD_URL" }
-               *
-               * and replaces only OLD_URL.
-               */
               $pattern = '/("' . $escapedOrigin . '"\s*:\s*\{[^}]*?target\s*:\s*")[^"]*(")/s';
 
               $newContent = preg_replace(
@@ -146,14 +139,6 @@ jobs:
           $forge = new Forge($token);
           $forge->setTimeout(180);
 
-          /*
-           * IMPORTANT:
-           * directory => /public means Forge serves:
-           * /home/forge/DOMAIN/current/public/index.html
-           *
-           * So your source repo myFirstOnForgeSite must contain:
-           * public/index.html
-           */
           $site = $forge->createSite($serverId, [
               'domain' => $domain,
               'project_type' => 'html',
@@ -174,23 +159,27 @@ jobs:
               'composer' => false,
           ], false);
 
-          echo "Waiting 90 seconds for Git install...\n";
-          sleep(90);
+          echo "Waiting 120 seconds for Git install...\n";
+          sleep(120);
 
-          echo "Setting static deployment script using /current directory...\n";
+          echo "Setting deployment script that supports both /current and normal Forge folders...\n";
 
-          /*
-           * IMPORTANT:
-           * Forge uses:
-           * /home/forge/DOMAIN/current
-           *
-           * So deployment must happen inside /current.
-           */
           $deployScript = <<<BASH
-          cd /home/forge/{$domain}/current
-          git reset --hard
+          SITE_PATH="/home/forge/{$domain}"
+
+          if [ -d "\$SITE_PATH/current" ]; then
+              echo "Using zero-downtime current directory"
+              cd "\$SITE_PATH/current"
+          else
+              echo "Using normal site directory"
+              cd "\$SITE_PATH"
+          fi
+
+          git fetch origin {$branch}
+          git reset --hard origin/{$branch}
           git clean -fd
-          git pull origin {$branch}
+
+          echo "Deployment finished"
           BASH;
 
           $forge->updateSiteDeploymentScript($serverId, $site->id, $deployScript);
@@ -198,8 +187,8 @@ jobs:
           echo "Triggering first deploy...\n";
           $forge->deploySite($serverId, $site->id, false);
 
-          echo "Waiting 90 seconds after deploy trigger...\n";
-          sleep(90);
+          echo "Waiting 120 seconds after deploy trigger...\n";
+          sleep(120);
 
           echo "Updating {$targetFile}: target for {$originUrl} => {$newUrl}\n";
           updateMappingFile($targetFile, $originUrl, $newUrl);
