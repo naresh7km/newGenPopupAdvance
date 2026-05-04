@@ -1,4 +1,4 @@
-name: Create One Laravel Forge Site
+name: Forge Site Loop
 
 on:
   workflow_dispatch:
@@ -7,37 +7,33 @@ permissions:
   contents: write
 
 concurrency:
-  group: forge-site-creator
+  group: forge-site-loop
   cancel-in-progress: false
 
 jobs:
-  create-site:
+  create-sites:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 355
 
     env:
       FORGE_API_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
-      FORGE_SERVER_ID: ${{ vars.FORGE_SERVER_ID }}
-      FORGE_SOURCE_REPOSITORY: ${{ vars.FORGE_SOURCE_REPOSITORY }}
-      FORGE_SOURCE_BRANCH: ${{ vars.FORGE_SOURCE_BRANCH }}
-      TARGET_INDEX_FILE: ${{ vars.TARGET_INDEX_FILE }}
-      TARGET_MAP_ORIGIN: ${{ vars.TARGET_MAP_ORIGIN }}
-      FORGE_DOMAIN_PREFIX: ${{ vars.FORGE_DOMAIN_PREFIX }}
-      SITE_INSTALL_WAIT_SECONDS: ${{ vars.SITE_INSTALL_WAIT_SECONDS }}
+      FORGE_SERVER_ID: ${{ secrets.FORGE_SERVER_ID }}
+
+      FORGE_REPOSITORY: ${{ vars.FORGE_REPOSITORY }}
+      FORGE_BRANCH: ${{ vars.FORGE_BRANCH }}
+
+      SOURCE_ORIGIN_URL: ${{ vars.SOURCE_ORIGIN_URL }}
+      INDEX_JS_PATH: ${{ vars.INDEX_JS_PATH }}
+
+      WAIT_SECONDS: ${{ vars.WAIT_SECONDS }}
+      MAX_SITES_PER_RUN: ${{ vars.MAX_SITES_PER_RUN }}
 
     steps:
-      - name: Checkout newGenPopupAdvance repo
+      - name: Checkout repo
         uses: actions/checkout@v4
-
-      - name: Validate required values
-        run: |
-          test -n "$FORGE_API_TOKEN" || (echo "Missing FORGE_API_TOKEN secret" && exit 1)
-          test -n "$FORGE_SERVER_ID" || (echo "Missing FORGE_SERVER_ID variable" && exit 1)
-          test -n "$FORGE_SOURCE_REPOSITORY" || (echo "Missing FORGE_SOURCE_REPOSITORY variable" && exit 1)
-          test -n "$FORGE_SOURCE_BRANCH" || (echo "Missing FORGE_SOURCE_BRANCH variable" && exit 1)
-          test -n "$TARGET_INDEX_FILE" || (echo "Missing TARGET_INDEX_FILE variable" && exit 1)
-          test -n "$TARGET_MAP_ORIGIN" || (echo "Missing TARGET_MAP_ORIGIN variable" && exit 1)
-          test -f "$TARGET_INDEX_FILE" || (echo "Cannot find $TARGET_INDEX_FILE in repo root" && exit 1)
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ vars.FORGE_BRANCH }}
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -47,169 +43,286 @@ jobs:
 
       - name: Install Laravel Forge SDK
         run: |
-          composer require laravel/forge-sdk:^3.0 --no-interaction --no-progress
+          composer require laravel/forge-sdk --no-interaction --prefer-dist
 
-      - name: Create Forge site and update server.js
+      - name: Create temporary Forge script
         run: |
-          cat > forge-create-site.php <<'PHP'
+          mkdir -p tools
+
+          cat > tools/forge-create-site.php <<'PHP'
           <?php
 
-          require __DIR__ . '/vendor/autoload.php';
+          require __DIR__ . '/../vendor/autoload.php';
 
           use Laravel\Forge\Forge;
 
-          function envValue(string $key, ?string $default = null): string
+          function required_env(string $key): string
           {
               $value = getenv($key);
-              if ($value === false || $value === '') {
-                  if ($default !== null) {
-                      return $default;
-                  }
-                  fwrite(STDERR, "Missing environment value: {$key}\n");
+
+              if ($value === false || trim($value) === '') {
+                  fwrite(STDERR, "Missing environment variable: {$key}\n");
                   exit(1);
               }
 
-              return $value;
+              return trim($value);
           }
 
-          function randomSlug(int $length = 10): string
+          function optional_env(string $key, string $default): string
           {
-              $letters = 'abcdefghijklmnopqrstuvwxyz';
-              $chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+              $value = getenv($key);
 
-              $slug = $letters[random_int(0, strlen($letters) - 1)];
-
-              for ($i = 1; $i < $length; $i++) {
-                  $slug .= $chars[random_int(0, strlen($chars) - 1)];
+              if ($value === false || trim($value) === '') {
+                  return $default;
               }
 
-              return $slug;
+              return trim($value);
           }
 
-          function updateMappingFile(string $filePath, string $originUrl, string $newUrl): void
+          function random_site_name(): string
           {
-              if (! file_exists($filePath)) {
-                  fwrite(STDERR, "File not found: {$filePath}\n");
+              $left = [
+                  'bright', 'silent', 'rapid', 'golden', 'happy',
+                  'cosmic', 'fresh', 'lucky', 'magic', 'swift',
+                  'clever', 'flying', 'gentle', 'brave', 'sunny',
+                  'crimson', 'silver', 'hidden', 'wild', 'calm',
+                  'noble', 'mellow', 'proud', 'quiet', 'sharp',
+              ];
+
+              $right = [
+                  'fox', 'panda', 'falcon', 'otter', 'tiger',
+                  'comet', 'river', 'forest', 'cloud', 'spark',
+                  'rocket', 'planet', 'wave', 'stone', 'leaf',
+                  'pixel', 'shell', 'breeze', 'shadow', 'nova',
+                  'lion', 'eagle', 'wolf', 'storm', 'ember',
+              ];
+
+              return $left[array_rand($left)] . '-' . $right[array_rand($right)] . '-' . strtolower(bin2hex(random_bytes(3)));
+          }
+
+          function update_index_js(string $filePath, string $sourceOriginUrl, string $newTargetUrl): void
+          {
+              if (!file_exists($filePath)) {
+                  fwrite(STDERR, "Could not find INDEX_JS_PATH file: {$filePath}\n");
                   exit(1);
               }
 
               $content = file_get_contents($filePath);
-              $escapedOrigin = preg_quote($originUrl, '/');
 
-              /*
-               * Finds this:
-               *
-               * "ORIGIN_URL": { method: "iframe", target: "OLD_URL" }
-               *
-               * Replaces only OLD_URL after target:
-               */
-              $pattern = '/("' . $escapedOrigin . '"\s*:\s*\{[^}]*?target\s*:\s*")[^"]*(")/s';
+              if ($content === false) {
+                  fwrite(STDERR, "Could not read file: {$filePath}\n");
+                  exit(1);
+              }
+
+              $quotedSource = preg_quote($sourceOriginUrl, '/');
+
+              $pattern = '/("' . $quotedSource . '"\s*:\s*")([^"]+)(")/';
 
               $newContent = preg_replace(
                   $pattern,
-                  '${1}' . $newUrl . '${2}',
+                  '$1' . $newTargetUrl . '$3',
                   $content,
                   1,
                   $count
               );
 
-              if ($count !== 1) {
-                  fwrite(STDERR, "Could not find exactly one target mapping for origin URL: {$originUrl}\n");
-                  fwrite(STDERR, "Expected format similar to:\n");
-                  fwrite(STDERR, "\"{$originUrl}\": { method: \"iframe\", target: \"https://old-url.com\" }\n");
+              if ($newContent === null) {
+                  fwrite(STDERR, "Regex replacement failed.\n");
+                  exit(1);
+              }
+
+              if ($count < 1) {
+                  fwrite(STDERR, "Could not find this exact source URL inside {$filePath}:\n{$sourceOriginUrl}\n");
                   exit(1);
               }
 
               file_put_contents($filePath, $newContent);
+
+              echo "Updated {$filePath}\n";
+              echo "Changed target URL to: {$newTargetUrl}\n";
           }
 
-          $token = envValue('FORGE_API_TOKEN');
-          $serverId = (int) envValue('FORGE_SERVER_ID');
-          $repository = envValue('FORGE_SOURCE_REPOSITORY');
-          $branch = envValue('FORGE_SOURCE_BRANCH', 'main');
-          $targetFile = envValue('TARGET_INDEX_FILE', 'server.js');
-          $originUrl = envValue('TARGET_MAP_ORIGIN');
-          $prefix = envValue('FORGE_DOMAIN_PREFIX', 'popup');
-          $installWaitSeconds = (int) envValue('SITE_INSTALL_WAIT_SECONDS', '180');
+          $forgeToken = required_env('FORGE_API_TOKEN');
+          $serverId = (int) required_env('FORGE_SERVER_ID');
 
-          $siteSlug = $prefix . '-' . randomSlug(10);
-          $domain = $siteSlug . '.on-forge.com';
-          $newUrl = 'https://' . $domain;
+          $repository = required_env('FORGE_REPOSITORY');
+          $branch = optional_env('FORGE_BRANCH', 'main');
 
-          echo "Creating Forge static HTML site: {$domain}\n";
-          echo "Source repo: {$repository}\n";
-          echo "Branch: {$branch}\n";
+          $sourceOriginUrl = required_env('SOURCE_ORIGIN_URL');
+          $indexJsPath = optional_env('INDEX_JS_PATH', 'public/index.js');
 
-          $forge = new Forge($token);
-          $forge->setTimeout(180);
+          $forge = new Forge($forgeToken);
+          $forge->setTimeout(240);
 
+          $siteName = random_site_name();
+          $domain = $siteName . '.on-forge.com';
+          $siteUrl = 'https://' . $domain;
+
+          echo "Creating Forge site: {$domain}\n";
+
+          /*
+           * Important:
+           * Forge default web directory is /public.
+           * Your repo must have public/index.html and public/index.js.
+           */
           $site = $forge->createSite($serverId, [
               'domain' => $domain,
               'project_type' => 'html',
               'directory' => '/public',
-          ]);
+              'nginx_template' => 'default',
+          ], true);
 
-          echo "Created site ID: {$site->id}\n";
+          echo "Created Forge site ID: {$site->id}\n";
+          echo "Forge URL: {$siteUrl}\n";
 
-          echo "Waiting {$installWaitSeconds} seconds for Forge site setup...\n";
-          sleep($installWaitSeconds);
-
-          echo "Installing GitHub repository on Forge site...\n";
+          echo "Installing GitHub repo: {$repository}\n";
+          echo "Branch: {$branch}\n";
 
           $forge->installGitRepositoryOnSite($serverId, $site->id, [
               'provider' => 'github',
               'repository' => $repository,
               'branch' => $branch,
               'composer' => false,
-          ], false);
+          ]);
 
-          echo "Waiting 60 seconds for Git install...\n";
-          sleep(60);
+          /*
+           * Static HTML deploy script.
+           * This avoids composer/npm/artisan commands.
+           */
+          $deployScript = <<<SCRIPT
+          cd /home/forge/{$domain}/current
 
-          echo "Setting static deployment script...\n";
-
-          $deployScript = <<<BASH
-          cd /home/forge/{$domain}
           git pull origin {$branch}
-          BASH;
+          SCRIPT;
+
+          echo "Updating Forge deploy script for static HTML...\n";
 
           $forge->updateSiteDeploymentScript($serverId, $site->id, $deployScript);
 
-          echo "Triggering first deploy...\n";
-          $forge->deploySite($serverId, $site->id, false);
+          update_index_js($indexJsPath, $sourceOriginUrl, $siteUrl);
 
-          echo "Waiting 60 seconds after deploy trigger...\n";
-          sleep(60);
+          $metadataFile = 'forge-created-sites.json';
 
-          echo "Updating {$targetFile}: target for {$originUrl} => {$newUrl}\n";
-          updateMappingFile($targetFile, $originUrl, $newUrl);
+          $metadata = [];
 
-          file_put_contents('forge-created-site.txt', $newUrl . PHP_EOL);
-          file_put_contents('forge-created-site-id.txt', (string) $site->id . PHP_EOL);
+          if (file_exists($metadataFile)) {
+              $decoded = json_decode(file_get_contents($metadataFile), true);
 
-          echo "Done. New URL: {$newUrl}\n";
+              if (is_array($decoded)) {
+                  $metadata = $decoded;
+              }
+          }
+
+          $metadata[] = [
+              'site_id' => $site->id,
+              'domain' => $domain,
+              'url' => $siteUrl,
+              'repository' => $repository,
+              'branch' => $branch,
+              'created_at_utc' => gmdate('c'),
+          ];
+
+          file_put_contents(
+              $metadataFile,
+              json_encode($metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL
+          );
+
+          file_put_contents(
+              'last-forge-site.json',
+              json_encode([
+                  'site_id' => $site->id,
+                  'domain' => $domain,
+                  'url' => $siteUrl,
+              ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL
+          );
+
+          echo "Saved metadata.\n";
+          echo "SITE_ID={$site->id}\n";
+          echo "SITE_URL={$siteUrl}\n";
           PHP
 
-          php forge-create-site.php
+          cat > tools/forge-deploy-last-site.php <<'PHP'
+          <?php
 
-      - name: Show created site
+          require __DIR__ . '/../vendor/autoload.php';
+
+          use Laravel\Forge\Forge;
+
+          $forgeToken = getenv('FORGE_API_TOKEN');
+          $serverId = getenv('FORGE_SERVER_ID');
+
+          if (!$forgeToken || !$serverId) {
+              fwrite(STDERR, "Missing Forge environment variables.\n");
+              exit(1);
+          }
+
+          if (!file_exists('last-forge-site.json')) {
+              fwrite(STDERR, "Missing last-forge-site.json\n");
+              exit(1);
+          }
+
+          $lastSite = json_decode(file_get_contents('last-forge-site.json'), true);
+
+          if (!isset($lastSite['site_id'])) {
+              fwrite(STDERR, "Invalid last-forge-site.json\n");
+              exit(1);
+          }
+
+          $forge = new Forge($forgeToken);
+
+          echo "Deploying Forge site ID: {$lastSite['site_id']}\n";
+
+          $forge->deploySite((int) $serverId, (int) $lastSite['site_id']);
+
+          echo "Deploy triggered.\n";
+          PHP
+
+      - name: Configure Git user
         run: |
-          echo "Created Forge URL:"
-          cat forge-created-site.txt
+          git config user.name "forge-site-bot"
+          git config user.email "forge-site-bot@users.noreply.github.com"
 
-      - name: Commit server.js update
+      - name: Run Forge loop
         run: |
-          NEW_URL="$(cat forge-created-site.txt)"
+          set -e
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          MAX="${MAX_SITES_PER_RUN:-15}"
+          WAIT="${WAIT_SECONDS:-300}"
+          BRANCH="${FORGE_BRANCH:-main}"
 
-          git add "$TARGET_INDEX_FILE" forge-created-site.txt forge-created-site-id.txt
+          echo "Max sites this run: $MAX"
+          echo "Wait between sites: $WAIT seconds"
+          echo "Branch: $BRANCH"
 
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-            exit 0
-          fi
+          for i in $(seq 1 "$MAX"); do
+            echo ""
+            echo "===================================="
+            echo "Creating Forge site $i of $MAX"
+            echo "===================================="
 
-          git commit -m "Update Forge site target to ${NEW_URL}"
-          git push
+            git pull --rebase origin "$BRANCH"
+
+            php tools/forge-create-site.php
+
+            git add "$INDEX_JS_PATH" forge-created-sites.json last-forge-site.json
+
+            if git diff --cached --quiet; then
+              echo "No Git changes to commit."
+            else
+              git commit -m "Update Forge target URL $i"
+              git push origin "$BRANCH"
+              echo "Pushed updated URL to GitHub."
+            fi
+
+            echo "Waiting 30 seconds before triggering Forge deploy..."
+            sleep 30
+
+            php tools/forge-deploy-last-site.php
+
+            if [ "$i" -lt "$MAX" ]; then
+              echo "Waiting $WAIT seconds before next site..."
+              sleep "$WAIT"
+            fi
+          done
+
+          echo "Finished Forge loop."
