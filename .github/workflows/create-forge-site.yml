@@ -68,10 +68,11 @@ jobs:
                   fwrite(STDERR, "Missing environment value: {$key}\n");
                   exit(1);
               }
+
               return $value;
           }
 
-          function randomSlug(int $length = 8): string
+          function randomSlug(int $length = 10): string
           {
               $letters = 'abcdefghijklmnopqrstuvwxyz';
               $chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -93,10 +94,16 @@ jobs:
               }
 
               $content = file_get_contents($filePath);
-
               $escapedOrigin = preg_quote($originUrl, '/');
 
-              $pattern = '/("' . $escapedOrigin . '"\s*:\s*")[^"]*(")/';
+              /*
+               * Finds this:
+               *
+               * "ORIGIN_URL": { method: "iframe", target: "OLD_URL" }
+               *
+               * Replaces only OLD_URL after target:
+               */
+              $pattern = '/("' . $escapedOrigin . '"\s*:\s*\{[^}]*?target\s*:\s*")[^"]*(")/s';
 
               $newContent = preg_replace(
                   $pattern,
@@ -107,8 +114,9 @@ jobs:
               );
 
               if ($count !== 1) {
-                  fwrite(STDERR, "Could not find exactly one mapping for origin URL: {$originUrl}\n");
-                  fwrite(STDERR, "Make sure server.js contains this exact left-side URL.\n");
+                  fwrite(STDERR, "Could not find exactly one target mapping for origin URL: {$originUrl}\n");
+                  fwrite(STDERR, "Expected format similar to:\n");
+                  fwrite(STDERR, "\"{$originUrl}\": { method: \"iframe\", target: \"https://old-url.com\" }\n");
                   exit(1);
               }
 
@@ -133,12 +141,6 @@ jobs:
           echo "Branch: {$branch}\n";
 
           $forge = new Forge($token);
-
-          /*
-           * We use project_type html because this is a static HTML site.
-           * We use directory "/" because static HTML repos often serve from the repo root.
-           * If your static site files are inside /public, change "/" to "/public".
-           */
           $forge->setTimeout(180);
 
           $site = $forge->createSite($serverId, [
@@ -149,7 +151,7 @@ jobs:
 
           echo "Created site ID: {$site->id}\n";
 
-          echo "Waiting extra {$installWaitSeconds} seconds for Forge site setup...\n";
+          echo "Waiting {$installWaitSeconds} seconds for Forge site setup...\n";
           sleep($installWaitSeconds);
 
           echo "Installing GitHub repository on Forge site...\n";
@@ -164,7 +166,7 @@ jobs:
           echo "Waiting 60 seconds for Git install...\n";
           sleep(60);
 
-          echo "Setting simple static deployment script...\n";
+          echo "Setting static deployment script...\n";
 
           $deployScript = <<<BASH
           cd /home/forge/{$domain}
@@ -179,7 +181,7 @@ jobs:
           echo "Waiting 60 seconds after deploy trigger...\n";
           sleep(60);
 
-          echo "Updating {$targetFile}: {$originUrl} => {$newUrl}\n";
+          echo "Updating {$targetFile}: target for {$originUrl} => {$newUrl}\n";
           updateMappingFile($targetFile, $originUrl, $newUrl);
 
           file_put_contents('forge-created-site.txt', $newUrl . PHP_EOL);
@@ -209,5 +211,5 @@ jobs:
             exit 0
           fi
 
-          git commit -m "Update Forge site URL to ${NEW_URL}"
+          git commit -m "Update Forge site target to ${NEW_URL}"
           git push
