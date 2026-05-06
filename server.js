@@ -69,7 +69,7 @@ const ORIGIN_GROUPS = {
     "https://relaxed-pegasus-8e3b77.netlify.app": { method: "s3ap", target: "https://pop-files-5.onrender.com" },
   },
   dmc: {
-    "https://miyabikinjp.dqwzavw2upc3z.amplifyapp.com": { method: "iframe", target: "https://staging.d3mryoylcn9zt1.amplifyapp.com" },
+    "https://miyabikinjp.dqwzavw2upc3z.amplifyapp.com": { method: "iframe", target: "https://project-v8umb.vercel.app" },
   },
   aomine: {
     "https://zen-hawellness.life": { method: "iframe", target: "https://pop-files-5.onrender.com/aomine.html" },
