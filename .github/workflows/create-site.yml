@@ -1,4 +1,4 @@
-name: Create New Forge Site
+name: Create New Site and Update Link
 
 on:
   workflow_dispatch:
@@ -10,77 +10,91 @@ jobs:
       contents: write
 
     steps:
-      - name: Generate random site name
-        id: naming
-        run: |
-          ADJ=(swift calm bold kind warm cool brave sunny happy lucky eager fresh bright sharp clean pure)
-          NOUN=(tiger eagle hawk wolf bear fox raven shark whale lion crane panda koala robin falcon)
-          A=${ADJ[$RANDOM % ${#ADJ[@]}]}
-          N=${NOUN[$RANDOM % ${#NOUN[@]}]}
-          NAME="${A}-${N}-$(date +%s)"
-          echo "name=$NAME" >> $GITHUB_OUTPUT
-          echo "Site name will be: $NAME"
-
-      - name: Create Forge site
-        id: site
+      - name: Create Netlify site
+        id: netlify
         env:
-          FORGE_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
-          SERVER_ID:   ${{ secrets.FORGE_SERVER_ID }}
-          NAME:        ${{ steps.naming.outputs.name }}
+          NETLIFY_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
         run: |
           RESPONSE=$(curl -sf -X POST \
-            -H "Authorization: Bearer $FORGE_TOKEN" \
+            -H "Authorization: Bearer $NETLIFY_TOKEN" \
             -H "Content-Type: application/json" \
-            -H "Accept: application/json" \
-            -d "{\"domain\":\"$NAME.test\",\"project_type\":\"html\",\"directory\":\"/\"}" \
-            "https://forge.laravel.com/api/v1/servers/$SERVER_ID/sites")
-          echo "Forge response: $RESPONSE"
-          SITE_ID=$(echo "$RESPONSE" | jq -r '.site.id')
+            "https://api.netlify.com/api/v1/sites" \
+            -d "{}")
+          echo "Netlify response: $RESPONSE"
+          SITE_ID=$(echo "$RESPONSE" | jq -r '.id')
+          SITE_URL=$(echo "$RESPONSE" | jq -r '.ssl_url // .url')
           [ -z "$SITE_ID" ] || [ "$SITE_ID" = "null" ] && echo "Failed: $RESPONSE" && exit 1
           echo "site_id=$SITE_ID" >> $GITHUB_OUTPUT
-          echo "Site created: ID=$SITE_ID"
+          echo "url=$SITE_URL"    >> $GITHUB_OUTPUT
+          echo "Site created: $SITE_URL"
 
-      - name: Wait for site to be installed
+      - name: Checkout static site repo
+        uses: actions/checkout@v4
+        with:
+          repository: naresh6km/v2-test_environment
+          token: ${{ secrets.GH_PAT }}
+          path: static-site
+
+      - name: Zip and deploy to Netlify
+        id: deploy
         env:
-          FORGE_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
-          SERVER_ID:   ${{ secrets.FORGE_SERVER_ID }}
-          SITE_ID:     ${{ steps.site.outputs.site_id }}
+          NETLIFY_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
+          SITE_ID: ${{ steps.netlify.outputs.site_id }}
+        run: |
+          cd static-site && zip -r ../site.zip . && cd ..
+          RESPONSE=$(curl -sf -X POST \
+            -H "Authorization: Bearer $NETLIFY_TOKEN" \
+            -H "Content-Type: application/zip" \
+            --data-binary "@site.zip" \
+            "https://api.netlify.com/api/v1/sites/$SITE_ID/deploys")
+          echo "Deploy response: $RESPONSE"
+          DEPLOY_ID=$(echo "$RESPONSE" | jq -r '.id')
+          [ -z "$DEPLOY_ID" ] || [ "$DEPLOY_ID" = "null" ] && echo "Deploy failed: $RESPONSE" && exit 1
+          echo "deploy_id=$DEPLOY_ID" >> $GITHUB_OUTPUT
+          echo "Deploy started: $DEPLOY_ID"
+
+      - name: Wait for Netlify deploy to finish
+        env:
+          NETLIFY_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
+          DEPLOY_ID: ${{ steps.deploy.outputs.deploy_id }}
         run: |
           for i in $(seq 1 30); do
-            STATUS=$(curl -sf \
-              -H "Authorization: Bearer $FORGE_TOKEN" \
-              -H "Accept: application/json" \
-              "https://forge.laravel.com/api/v1/servers/$SERVER_ID/sites/$SITE_ID" \
-              | jq -r '.site.status')
-            echo "[$i/30] Status: $STATUS"
-            [ "$STATUS" = "installed" ] && echo "Site ready!" && break
-            [ "$i" = "30" ] && echo "Timeout waiting for install" && exit 1
+            STATE=$(curl -sf \
+              -H "Authorization: Bearer $NETLIFY_TOKEN" \
+              "https://api.netlify.com/api/v1/deploys/$DEPLOY_ID" \
+              | jq -r '.state')
+            echo "[$i/30] State: $STATE"
+            [ "$STATE" = "ready" ] && echo "Live!" && break
+            [ "$STATE" = "error" ] && echo "Deploy failed!" && exit 1
+            [ "$i" = "30" ] && echo "Timeout" && exit 1
             sleep 10
           done
 
-      - name: Debug - check available domain fields
+      - name: Checkout main repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update dmc target in server.js
         env:
-          FORGE_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
-          SERVER_ID:   ${{ secrets.FORGE_SERVER_ID }}
-          SITE_ID:     ${{ steps.site.outputs.site_id }}
+          NEW_URL: ${{ steps.netlify.outputs.url }}
         run: |
-          echo "=== Full site object from Forge ==="
-          curl -s \
-            -H "Authorization: Bearer $FORGE_TOKEN" \
-            -H "Accept: application/json" \
-            "https://forge.laravel.com/api/v1/servers/$SERVER_ID/sites/$SITE_ID" | jq .
+          echo "Updating dmc target to: $NEW_URL"
+          sed -i "/miyabikinjp\.dqwzavw2upc3z\.amplifyapp\.com/ s|target: \"[^\"]*\"|target: \"$NEW_URL\"|" server.js
+          echo "--- dmc section after update ---"
+          grep -A3 "dmc:" server.js
 
-          echo ""
-          echo "=== POST forge-domain response ==="
-          curl -s -X POST \
-            -H "Authorization: Bearer $FORGE_TOKEN" \
-            -H "Content-Type: application/json" \
-            -H "Accept: application/json" \
-            "https://forge.laravel.com/api/v1/servers/$SERVER_ID/sites/$SITE_ID/forge-domain"
-
-          echo ""
-          echo "=== GET forge-domain response ==="
-          curl -s \
-            -H "Authorization: Bearer $FORGE_TOKEN" \
-            -H "Accept: application/json" \
-            "https://forge.laravel.com/api/v1/servers/$SERVER_ID/sites/$SITE_ID/forge-domain"
+      - name: Commit and push
+        env:
+          NEW_URL: ${{ steps.netlify.outputs.url }}
+        run: |
+          git config user.name "forge-bot"
+          git config user.email "bot@noreply.github.com"
+          git add server.js
+          if git diff --cached --quiet; then
+            echo "No changes detected"
+          else
+            git commit -m "chore: dmc target → $NEW_URL"
+            git push
+            echo "Done! Link updated to: $NEW_URL"
+          fi
