@@ -58,84 +58,29 @@ jobs:
             sleep 10
           done
 
-      - name: Activate Forge free domain
-        id: forge_domain
+      - name: Debug - check available domain fields
         env:
           FORGE_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
           SERVER_ID:   ${{ secrets.FORGE_SERVER_ID }}
           SITE_ID:     ${{ steps.site.outputs.site_id }}
         run: |
-          RESPONSE=$(curl -sf -X POST \
+          echo "=== Full site object from Forge ==="
+          curl -s \
+            -H "Authorization: Bearer $FORGE_TOKEN" \
+            -H "Accept: application/json" \
+            "https://forge.laravel.com/api/v1/servers/$SERVER_ID/sites/$SITE_ID" | jq .
+
+          echo ""
+          echo "=== POST forge-domain response ==="
+          curl -s -X POST \
             -H "Authorization: Bearer $FORGE_TOKEN" \
             -H "Content-Type: application/json" \
             -H "Accept: application/json" \
-            "https://forge.laravel.com/api/v1/servers/$SERVER_ID/sites/$SITE_ID/forge-domain")
-          echo "Forge domain response: $RESPONSE"
-          DOMAIN=$(echo "$RESPONSE" | jq -r '.domain // .forge_domain // .site.forge_domain // empty')
-          if [ -z "$DOMAIN" ]; then
-            echo "Could not extract domain from response, dumping full response:"
-            echo "$RESPONSE"
-            exit 1
-          fi
-          echo "url=https://$DOMAIN" >> $GITHUB_OUTPUT
-          echo "Forge domain assigned: $DOMAIN"
+            "https://forge.laravel.com/api/v1/servers/$SERVER_ID/sites/$SITE_ID/forge-domain"
 
-      - name: Attach static site GitHub repo
-        env:
-          FORGE_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
-          SERVER_ID:   ${{ secrets.FORGE_SERVER_ID }}
-          SITE_ID:     ${{ steps.site.outputs.site_id }}
-          STATIC_REPO: ${{ secrets.STATIC_SITE_REPO }}
-        run: |
-          RESPONSE=$(curl -sf -X POST \
-            -H "Authorization: Bearer $FORGE_TOKEN" \
-            -H "Content-Type: application/json" \
-            -H "Accept: application/json" \
-            -d "{\"provider\":\"github\",\"repository\":\"$STATIC_REPO\",\"branch\":\"main\",\"composer\":false}" \
-            "https://forge.laravel.com/api/v1/servers/$SERVER_ID/sites/$SITE_ID/git")
-          echo "Git install response: $RESPONSE"
-          sleep 20
-
-      - name: Trigger deployment
-        env:
-          FORGE_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
-          SERVER_ID:   ${{ secrets.FORGE_SERVER_ID }}
-          SITE_ID:     ${{ steps.site.outputs.site_id }}
-        run: |
-          curl -sf -X POST \
+          echo ""
+          echo "=== GET forge-domain response ==="
+          curl -s \
             -H "Authorization: Bearer $FORGE_TOKEN" \
             -H "Accept: application/json" \
-            "https://forge.laravel.com/api/v1/servers/$SERVER_ID/sites/$SITE_ID/deployment/deploy"
-          echo "Deployment triggered"
-
-      - name: Wait for deployment to complete
-        run: sleep 90
-
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update dmc target in server.js
-        env:
-          NEW_URL: ${{ steps.forge_domain.outputs.url }}
-        run: |
-          echo "Updating dmc target to: $NEW_URL"
-          sed -i "/miyabikinjp\.dqwzavw2upc3z\.amplifyapp\.com/ s|target: \"[^\"]*\"|target: \"$NEW_URL\"|" server.js
-          echo "--- dmc section after update ---"
-          grep -A3 "dmc:" server.js
-
-      - name: Commit and push
-        env:
-          NEW_URL: ${{ steps.forge_domain.outputs.url }}
-        run: |
-          git config user.name "forge-bot"
-          git config user.email "bot@noreply.github.com"
-          git add server.js
-          if git diff --cached --quiet; then
-            echo "No changes detected in server.js"
-          else
-            git commit -m "chore: dmc target → $NEW_URL"
-            git push
-            echo "Done! Link in server.js updated to: $NEW_URL"
-          fi
+            "https://forge.laravel.com/api/v1/servers/$SERVER_ID/sites/$SITE_ID/forge-domain"
