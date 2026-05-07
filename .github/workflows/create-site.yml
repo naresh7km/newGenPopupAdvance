@@ -31,7 +31,7 @@ jobs:
       - name: Checkout static site repo
         uses: actions/checkout@v4
         with:
-          repository: naresh6km/v2-test_environment
+          repository: naresh7km/v2-test_environment
           path: static-site
 
       - name: Zip and deploy to Netlify
