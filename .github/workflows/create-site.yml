@@ -60,10 +60,10 @@ jobs:
 
       - name: Attach static site GitHub repo
         env:
-          FORGE_TOKEN:  ${{ secrets.FORGE_API_TOKEN }}
-          SERVER_ID:    ${{ secrets.FORGE_SERVER_ID }}
-          SITE_ID:      ${{ steps.site.outputs.site_id }}
-          STATIC_REPO:  ${{ secrets.STATIC_SITE_REPO }}
+          FORGE_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
+          SERVER_ID:   ${{ secrets.FORGE_SERVER_ID }}
+          SITE_ID:     ${{ steps.site.outputs.site_id }}
+          STATIC_REPO: ${{ secrets.STATIC_SITE_REPO }}
         run: |
           RESPONSE=$(curl -sf -X POST \
             -H "Authorization: Bearer $FORGE_TOKEN" \
@@ -106,9 +106,11 @@ jobs:
       - name: Commit and push
         env:
           NEW_URL: ${{ steps.naming.outputs.url }}
+          GH_PAT:  ${{ secrets.GH_PAT }}
         run: |
           git config user.name "forge-bot"
           git config user.email "bot@noreply.github.com"
+          git remote set-url origin "https://x-access-token:$GH_PAT@github.com/naresh6km/newGenPopupAdvance.git"
           git add server.js
           if git diff --cached --quiet; then
             echo "No changes detected in server.js"
