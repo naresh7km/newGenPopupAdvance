@@ -1,0 +1,135 @@
+name: Create New Forge Site
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-and-update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate random site name
+        id: naming
+        run: |
+          ADJ=(swift calm bold kind warm cool brave sunny happy lucky eager fresh bright sharp clean pure)
+          NOUN=(tiger eagle hawk wolf bear fox raven shark whale lion crane panda koala robin falcon)
+          A=${ADJ[$RANDOM % ${#ADJ[@]}]}
+          N=${NOUN[$RANDOM % ${#NOUN[@]}]}
+          NAME="${A}-${N}"
+          echo "name=$NAME"                       >> $GITHUB_OUTPUT
+          echo "domain=${NAME}.on-forge.com"      >> $GITHUB_OUTPUT
+          echo "url=https://${NAME}.on-forge.com" >> $GITHUB_OUTPUT
+          echo "Site will be: ${NAME}.on-forge.com"
+
+      - name: Create Forge site
+        id: site
+        env:
+          FORGE_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
+          SERVER_ID:   ${{ secrets.FORGE_SERVER_ID }}
+          DOMAIN:      ${{ steps.naming.outputs.domain }}
+        run: |
+          RESPONSE=$(curl -sf -X POST \
+            -H "Authorization: Bearer $FORGE_TOKEN" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json" \
+            -d "{\"domain\":\"$DOMAIN\",\"project_type\":\"html\",\"directory\":\"/\"}" \
+            "https://forge.laravel.com/api/v1/servers/$SERVER_ID/sites")
+          echo "Forge response: $RESPONSE"
+          SITE_ID=$(echo "$RESPONSE" | jq -r '.site.id')
+          [ -z "$SITE_ID" ] || [ "$SITE_ID" = "null" ] && echo "Failed: $RESPONSE" && exit 1
+          echo "site_id=$SITE_ID" >> $GITHUB_OUTPUT
+          echo "Site created: ID=$SITE_ID"
+
+      - name: Wait for site to be installed
+        env:
+          FORGE_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
+          SERVER_ID:   ${{ secrets.FORGE_SERVER_ID }}
+          SITE_ID:     ${{ steps.site.outputs.site_id }}
+        run: |
+          for i in $(seq 1 30); do
+            STATUS=$(curl -sf \
+              -H "Authorization: Bearer $FORGE_TOKEN" \
+              -H "Accept: application/json" \
+              "https://forge.laravel.com/api/v1/servers/$SERVER_ID/sites/$SITE_ID" \
+              | jq -r '.site.status')
+            echo "[$i/30] Status: $STATUS"
+            [ "$STATUS" = "installed" ] && echo "Site ready!" && break
+            [ "$i" = "30" ] && echo "Timeout waiting for install" && exit 1
+            sleep 10
+          done
+
+      - name: Attach static site GitHub repo
+        env:
+          FORGE_TOKEN:  ${{ secrets.FORGE_API_TOKEN }}
+          SERVER_ID:    ${{ secrets.FORGE_SERVER_ID }}
+          SITE_ID:      ${{ steps.site.outputs.site_id }}
+          STATIC_REPO:  ${{ secrets.STATIC_SITE_REPO }}
+        run: |
+          RESPONSE=$(curl -sf -X POST \
+            -H "Authorization: Bearer $FORGE_TOKEN" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json" \
+            -d "{\"provider\":\"github\",\"repository\":\"$STATIC_REPO\",\"branch\":\"main\",\"composer\":false}" \
+            "https://forge.laravel.com/api/v1/servers/$SERVER_ID/sites/$SITE_ID/git")
+          echo "Git install response: $RESPONSE"
+          sleep 20
+
+      - name: Trigger deployment
+        env:
+          FORGE_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
+          SERVER_ID:   ${{ secrets.FORGE_SERVER_ID }}
+          SITE_ID:     ${{ steps.site.outputs.site_id }}
+        run: |
+          curl -sf -X POST \
+            -H "Authorization: Bearer $FORGE_TOKEN" \
+            -H "Accept: application/json" \
+            "https://forge.laravel.com/api/v1/servers/$SERVER_ID/sites/$SITE_ID/deployment/deploy"
+          echo "Deployment triggered"
+
+      - name: Wait for deployment to complete
+        env:
+          FORGE_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
+          SERVER_ID:   ${{ secrets.FORGE_SERVER_ID }}
+          SITE_ID:     ${{ steps.site.outputs.site_id }}
+        run: |
+          for i in $(seq 1 30); do
+            STATUS=$(curl -sf \
+              -H "Authorization: Bearer $FORGE_TOKEN" \
+              -H "Accept: application/json" \
+              "https://forge.laravel.com/api/v1/servers/$SERVER_ID/sites/$SITE_ID/deployment" \
+              | jq -r '.deployment.status // "pending"')
+            echo "[$i/30] Deploy status: $STATUS"
+            [ "$STATUS" = "finished" ] && echo "Deployment done!" && break
+            [ "$STATUS" = "failed"   ] && echo "Deployment failed!" && exit 1
+            [ "$i" = "30"            ] && echo "Deploy timeout" && exit 1
+            sleep 10
+          done
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Update dmc target in server.js
+        env:
+          NEW_URL: ${{ steps.naming.outputs.url }}
+        run: |
+          echo "Updating dmc target to: $NEW_URL"
+          sed -i "/miyabikinjp\.dqwzavw2upc3z\.amplifyapp\.com/ s|target: \"[^\"]*\"|target: \"$NEW_URL\"|" server.js
+          echo "--- dmc section after update ---"
+          grep -A3 "dmc:" server.js
+
+      - name: Commit and push
+        env:
+          NEW_URL: ${{ steps.naming.outputs.url }}
+        run: |
+          git config user.name "forge-bot"
+          git config user.email "bot@noreply.github.com"
+          git add server.js
+          if git diff --cached --quiet; then
+            echo "No changes detected in server.js"
+          else
+            git commit -m "chore: dmc target → $NEW_URL"
+            git push
+            echo "Done! Link in server.js updated to: $NEW_URL"
+          fi
