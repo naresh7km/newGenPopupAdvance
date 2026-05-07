@@ -6,6 +6,8 @@ on:
 jobs:
   create-and-update:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Generate random site name
@@ -92,7 +94,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update dmc target in server.js
         env:
@@ -106,11 +108,9 @@ jobs:
       - name: Commit and push
         env:
           NEW_URL: ${{ steps.naming.outputs.url }}
-          GH_PAT:  ${{ secrets.GH_PAT }}
         run: |
           git config user.name "forge-bot"
           git config user.email "bot@noreply.github.com"
-          git remote set-url origin "https://x-access-token:$GH_PAT@github.com/naresh6km/newGenPopupAdvance.git"
           git add server.js
           if git diff --cached --quiet; then
             echo "No changes detected in server.js"
