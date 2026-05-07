@@ -87,6 +87,7 @@ jobs:
           echo "Deployment triggered"
 
       - name: Wait for deployment to complete
+        run: sleep 90
         env:
           FORGE_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
           SERVER_ID:   ${{ secrets.FORGE_SERVER_ID }}
