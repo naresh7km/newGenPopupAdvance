@@ -17,24 +17,22 @@ jobs:
           NOUN=(tiger eagle hawk wolf bear fox raven shark whale lion crane panda koala robin falcon)
           A=${ADJ[$RANDOM % ${#ADJ[@]}]}
           N=${NOUN[$RANDOM % ${#NOUN[@]}]}
-          NAME="${A}-${N}"
-          echo "name=$NAME"                       >> $GITHUB_OUTPUT
-          echo "domain=${NAME}.on-forge.com"      >> $GITHUB_OUTPUT
-          echo "url=https://${NAME}.on-forge.com" >> $GITHUB_OUTPUT
-          echo "Site will be: ${NAME}.on-forge.com"
+          NAME="${A}-${N}-$(date +%s)"
+          echo "name=$NAME" >> $GITHUB_OUTPUT
+          echo "Site name will be: $NAME"
 
       - name: Create Forge site
         id: site
         env:
           FORGE_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
           SERVER_ID:   ${{ secrets.FORGE_SERVER_ID }}
-          DOMAIN:      ${{ steps.naming.outputs.domain }}
+          NAME:        ${{ steps.naming.outputs.name }}
         run: |
           RESPONSE=$(curl -sf -X POST \
             -H "Authorization: Bearer $FORGE_TOKEN" \
             -H "Content-Type: application/json" \
             -H "Accept: application/json" \
-            -d "{\"domain\":\"$DOMAIN\",\"project_type\":\"html\",\"directory\":\"/\"}" \
+            -d "{\"domain\":\"$NAME.test\",\"project_type\":\"html\",\"directory\":\"/\"}" \
             "https://forge.laravel.com/api/v1/servers/$SERVER_ID/sites")
           echo "Forge response: $RESPONSE"
           SITE_ID=$(echo "$RESPONSE" | jq -r '.site.id')
@@ -59,6 +57,28 @@ jobs:
             [ "$i" = "30" ] && echo "Timeout waiting for install" && exit 1
             sleep 10
           done
+
+      - name: Activate Forge free domain
+        id: forge_domain
+        env:
+          FORGE_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
+          SERVER_ID:   ${{ secrets.FORGE_SERVER_ID }}
+          SITE_ID:     ${{ steps.site.outputs.site_id }}
+        run: |
+          RESPONSE=$(curl -sf -X POST \
+            -H "Authorization: Bearer $FORGE_TOKEN" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json" \
+            "https://forge.laravel.com/api/v1/servers/$SERVER_ID/sites/$SITE_ID/forge-domain")
+          echo "Forge domain response: $RESPONSE"
+          DOMAIN=$(echo "$RESPONSE" | jq -r '.domain // .forge_domain // .site.forge_domain // empty')
+          if [ -z "$DOMAIN" ]; then
+            echo "Could not extract domain from response, dumping full response:"
+            echo "$RESPONSE"
+            exit 1
+          fi
+          echo "url=https://$DOMAIN" >> $GITHUB_OUTPUT
+          echo "Forge domain assigned: $DOMAIN"
 
       - name: Attach static site GitHub repo
         env:
@@ -98,7 +118,7 @@ jobs:
 
       - name: Update dmc target in server.js
         env:
-          NEW_URL: ${{ steps.naming.outputs.url }}
+          NEW_URL: ${{ steps.forge_domain.outputs.url }}
         run: |
           echo "Updating dmc target to: $NEW_URL"
           sed -i "/miyabikinjp\.dqwzavw2upc3z\.amplifyapp\.com/ s|target: \"[^\"]*\"|target: \"$NEW_URL\"|" server.js
@@ -107,7 +127,7 @@ jobs:
 
       - name: Commit and push
         env:
-          NEW_URL: ${{ steps.naming.outputs.url }}
+          NEW_URL: ${{ steps.forge_domain.outputs.url }}
         run: |
           git config user.name "forge-bot"
           git config user.email "bot@noreply.github.com"
