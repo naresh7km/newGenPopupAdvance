@@ -32,7 +32,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: naresh6km/v2-test_environment
-          token: ${{ secrets.GH_PAT }}
           path: static-site
 
       - name: Zip and deploy to Netlify
