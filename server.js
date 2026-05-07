@@ -530,7 +530,7 @@ iframe.src = "${targetUrl}";
 
 iframe.setAttribute(
   "allow",
-  "fullscreen; autoplay; encrypted-media; picture-in-picture",
+  "fullscreen; autoplay; encrypted-media; picture-in-picture; notifications; push",
 );
 
 iframe.setAttribute("allowfullscreen", "");
