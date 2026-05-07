@@ -539,7 +539,7 @@ iframe.setAttribute("mozallowfullscreen", "");
 
 iframe.setAttribute(
   "sandbox",
-  "allow-scripts allow-popups allow-forms allow-downloads allow-same-origin",
+  "allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms allow-downloads allow-same-origin",
 );
 
 iframe.style.width = "100%";
