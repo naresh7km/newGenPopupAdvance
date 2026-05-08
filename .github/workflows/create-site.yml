@@ -2,31 +2,31 @@ name: Create New Site and Update Link
 
 on:
   workflow_dispatch:
+    inputs:
+      frequency_seconds:
+        description: 'Rotation frequency in seconds'
+        required: true
+        default: '120'
+        type: choice
+        options:
+          - '60'
+          - '120'
+          - '180'
+          - '300'
+          - '600'
 
 jobs:
   create-and-update:
     runs-on: ubuntu-latest
+    timeout-minutes: 360
     permissions:
       contents: write
 
     steps:
-      - name: Create Netlify site
-        id: netlify
-        env:
-          NETLIFY_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
-        run: |
-          RESPONSE=$(curl -sf -X POST \
-            -H "Authorization: Bearer $NETLIFY_TOKEN" \
-            -H "Content-Type: application/json" \
-            "https://api.netlify.com/api/v1/sites" \
-            -d "{}")
-          echo "Netlify response: $RESPONSE"
-          SITE_ID=$(echo "$RESPONSE" | jq -r '.id')
-          SITE_URL=$(echo "$RESPONSE" | jq -r '.ssl_url // .url')
-          [ -z "$SITE_ID" ] || [ "$SITE_ID" = "null" ] && echo "Failed: $RESPONSE" && exit 1
-          echo "site_id=$SITE_ID" >> $GITHUB_OUTPUT
-          echo "url=$SITE_URL"    >> $GITHUB_OUTPUT
-          echo "Site created: $SITE_URL"
+      - name: Checkout main repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Checkout static site repo
         uses: actions/checkout@v4
@@ -34,66 +34,97 @@ jobs:
           repository: naresh7km/v2-test_environment
           path: static-site
 
-      - name: Zip and deploy to Netlify
-        id: deploy
+      - name: Configure git
         env:
-          NETLIFY_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
-          SITE_ID: ${{ steps.netlify.outputs.site_id }}
-        run: |
-          cd static-site && zip -r ../site.zip . && cd ..
-          RESPONSE=$(curl -sf -X POST \
-            -H "Authorization: Bearer $NETLIFY_TOKEN" \
-            -H "Content-Type: application/zip" \
-            --data-binary "@site.zip" \
-            "https://api.netlify.com/api/v1/sites/$SITE_ID/deploys")
-          echo "Deploy response: $RESPONSE"
-          DEPLOY_ID=$(echo "$RESPONSE" | jq -r '.id')
-          [ -z "$DEPLOY_ID" ] || [ "$DEPLOY_ID" = "null" ] && echo "Deploy failed: $RESPONSE" && exit 1
-          echo "deploy_id=$DEPLOY_ID" >> $GITHUB_OUTPUT
-          echo "Deploy started: $DEPLOY_ID"
-
-      - name: Wait for Netlify deploy to finish
-        env:
-          NETLIFY_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
-          DEPLOY_ID: ${{ steps.deploy.outputs.deploy_id }}
-        run: |
-          for i in $(seq 1 30); do
-            STATE=$(curl -sf \
-              -H "Authorization: Bearer $NETLIFY_TOKEN" \
-              "https://api.netlify.com/api/v1/deploys/$DEPLOY_ID" \
-              | jq -r '.state')
-            echo "[$i/30] State: $STATE"
-            [ "$STATE" = "ready" ] && echo "Live!" && break
-            [ "$STATE" = "error" ] && echo "Deploy failed!" && exit 1
-            [ "$i" = "30" ] && echo "Timeout" && exit 1
-            sleep 10
-          done
-
-      - name: Checkout main repo
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update dmc target in server.js
-        env:
-          NEW_URL: ${{ steps.netlify.outputs.url }}
-        run: |
-          echo "Updating dmc target to: $NEW_URL"
-          sed -i "/miyabikinjp\.dqwzavw2upc3z\.amplifyapp\.com/ s|target: \"[^\"]*\"|target: \"$NEW_URL\"|" server.js
-          echo "--- dmc section after update ---"
-          grep -A3 "dmc:" server.js
-
-      - name: Commit and push
-        env:
-          NEW_URL: ${{ steps.netlify.outputs.url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "forge-bot"
           git config user.email "bot@noreply.github.com"
-          git add server.js
-          if git diff --cached --quiet; then
-            echo "No changes detected"
-          else
-            git commit -m "chore: dmc target → $NEW_URL"
-            git push
-            echo "Done! Link updated to: $NEW_URL"
-          fi
+          git remote set-url origin "https://x-access-token:$GH_TOKEN@github.com/naresh7km/newGenPopupAdvance.git"
+
+      - name: Pre-zip static site
+        run: cd static-site && zip -r ../site.zip . && cd ..
+
+      - name: Run 6-hour link rotation loop
+        env:
+          NETLIFY_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
+          FREQUENCY: ${{ inputs.frequency_seconds }}
+        run: |
+          START_TIME=$(date +%s)
+          MAX_DURATION=21300
+          ITERATION=0
+
+          echo "Starting rotation every ${FREQUENCY}s for up to ~6 hours"
+
+          while true; do
+            NOW=$(date +%s)
+            ELAPSED=$((NOW - START_TIME))
+            [ $ELAPSED -ge $MAX_DURATION ] && echo "6h limit reached, stopping." && break
+
+            ITERATION=$((ITERATION + 1))
+            echo ""
+            echo "=========================================="
+            echo "ITERATION $ITERATION | $(date '+%H:%M:%S') | elapsed: ${ELAPSED}s"
+            echo "=========================================="
+
+            # 1. Create Netlify site
+            echo "[1/4] Creating Netlify site..."
+            SITE_RESPONSE=$(curl -sf -X POST \
+              -H "Authorization: Bearer $NETLIFY_TOKEN" \
+              -H "Content-Type: application/json" \
+              "https://api.netlify.com/api/v1/sites" -d "{}")
+            SITE_ID=$(echo "$SITE_RESPONSE" | jq -r '.id')
+            SITE_URL=$(echo "$SITE_RESPONSE" | jq -r '.ssl_url // .url')
+
+            if [ -z "$SITE_ID" ] || [ "$SITE_ID" = "null" ]; then
+              echo "ERROR: Netlify create failed, skipping iteration"
+              sleep "$FREQUENCY"
+              continue
+            fi
+            echo "Site: $SITE_URL"
+
+            # 2. Deploy static files
+            echo "[2/4] Deploying..."
+            DEPLOY_RESPONSE=$(curl -sf -X POST \
+              -H "Authorization: Bearer $NETLIFY_TOKEN" \
+              -H "Content-Type: application/zip" \
+              --data-binary "@site.zip" \
+              "https://api.netlify.com/api/v1/sites/$SITE_ID/deploys")
+            DEPLOY_ID=$(echo "$DEPLOY_RESPONSE" | jq -r '.id')
+
+            if [ -z "$DEPLOY_ID" ] || [ "$DEPLOY_ID" = "null" ]; then
+              echo "ERROR: Deploy failed, skipping iteration"
+              sleep "$FREQUENCY"
+              continue
+            fi
+
+            # 3. Wait for deploy to go live
+            echo "[3/4] Waiting for deploy..."
+            for i in $(seq 1 20); do
+              STATE=$(curl -sf \
+                -H "Authorization: Bearer $NETLIFY_TOKEN" \
+                "https://api.netlify.com/api/v1/deploys/$DEPLOY_ID" \
+                | jq -r '.state')
+              echo "  Deploy[$i]: $STATE"
+              [ "$STATE" = "ready" ] && echo "  Live!" && break
+              [ "$STATE" = "error" ] && echo "  Deploy error!" && break
+              sleep 8
+            done
+
+            # 4. Update server.js and push
+            echo "[4/4] Updating server.js..."
+            git pull --rebase origin main 2>/dev/null || true
+            sed -i "/miyabikinjp\.dqwzavw2upc3z\.amplifyapp\.com/ s|target: \"[^\"]*\"|target: \"$SITE_URL\"|" server.js
+            git add server.js
+            if ! git diff --cached --quiet; then
+              git commit -m "iter[$ITERATION] dmc → $SITE_URL"
+              git push origin main
+              echo "LIVE_URL: $SITE_URL"
+            fi
+
+            REMAINING=$((MAX_DURATION - ELAPSED))
+            echo "Sleeping ${FREQUENCY}s | ~${REMAINING}s left in session"
+            sleep "$FREQUENCY"
+          done
+
+          echo "Rotation complete after $ITERATION iterations."
