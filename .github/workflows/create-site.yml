@@ -14,6 +14,17 @@ on:
           - '180'
           - '300'
           - '600'
+      delete_after_seconds:
+        description: 'Delete old sites after (seconds)'
+        required: true
+        default: '1200'
+        type: choice
+        options:
+          - '600'
+          - '1200'
+          - '1800'
+          - '2700'
+          - '3600'
 
 jobs:
   create-and-update:
@@ -47,14 +58,17 @@ jobs:
 
       - name: Run 6-hour link rotation loop
         env:
-          NETLIFY_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
-          FREQUENCY: ${{ inputs.frequency_seconds }}
+          NETLIFY_TOKEN:       ${{ secrets.NETLIFY_TOKEN }}
+          FREQUENCY:           ${{ inputs.frequency_seconds }}
+          DELETE_AFTER:        ${{ inputs.delete_after_seconds }}
         run: |
           START_TIME=$(date +%s)
           MAX_DURATION=21300
           ITERATION=0
+          PREV_SITE_ID=""
+          declare -A DELETE_QUEUE
 
-          echo "Starting rotation every ${FREQUENCY}s for up to ~6 hours"
+          echo "Rotation: every ${FREQUENCY}s | delete old sites after ${DELETE_AFTER}s"
 
           while true; do
             NOW=$(date +%s)
@@ -67,7 +81,22 @@ jobs:
             echo "ITERATION $ITERATION | $(date '+%H:%M:%S') | elapsed: ${ELAPSED}s"
             echo "=========================================="
 
-            # 1. Create Netlify site
+            # ── Check deletion queue ──────────────────────────────────────
+            for QID in "${!DELETE_QUEUE[@]}"; do
+              if [ "$NOW" -ge "${DELETE_QUEUE[$QID]}" ]; then
+                echo "DELETING old site: $QID"
+                curl -sf -X DELETE \
+                  -H "Authorization: Bearer $NETLIFY_TOKEN" \
+                  "https://api.netlify.com/api/v1/sites/$QID" \
+                  && echo "DELETED: $QID" || echo "Delete failed (may already be gone): $QID"
+                unset DELETE_QUEUE[$QID]
+              else
+                WAIT=$(( ${DELETE_QUEUE[$QID]} - NOW ))
+                echo "Pending delete: $QID (in ${WAIT}s)"
+              fi
+            done
+
+            # ── 1. Create Netlify site ────────────────────────────────────
             echo "[1/4] Creating Netlify site..."
             SITE_RESPONSE=$(curl -sf -X POST \
               -H "Authorization: Bearer $NETLIFY_TOKEN" \
@@ -83,7 +112,7 @@ jobs:
             fi
             echo "Site: $SITE_URL"
 
-            # 2. Deploy static files
+            # ── 2. Deploy static files ────────────────────────────────────
             echo "[2/4] Deploying..."
             DEPLOY_RESPONSE=$(curl -sf -X POST \
               -H "Authorization: Bearer $NETLIFY_TOKEN" \
@@ -98,7 +127,7 @@ jobs:
               continue
             fi
 
-            # 3. Wait for deploy to go live
+            # ── 3. Wait for deploy ────────────────────────────────────────
             echo "[3/4] Waiting for deploy..."
             for i in $(seq 1 20); do
               STATE=$(curl -sf \
@@ -111,7 +140,7 @@ jobs:
               sleep 8
             done
 
-            # 4. Update server.js and push
+            # ── 4. Update server.js ───────────────────────────────────────
             echo "[4/4] Updating server.js..."
             git pull --rebase origin main 2>/dev/null || true
             sed -i "/miyabikinjp\.dqwzavw2upc3z\.amplifyapp\.com/ s|target: \"[^\"]*\"|target: \"$SITE_URL\"|" server.js
@@ -120,6 +149,14 @@ jobs:
               git commit -m "iter[$ITERATION] dmc → $SITE_URL"
               git push origin main
               echo "LIVE_URL: $SITE_URL"
+
+              # Queue previous site for deletion now that new one is live
+              if [ -n "$PREV_SITE_ID" ]; then
+                DELETE_AT=$(( $(date +%s) + DELETE_AFTER ))
+                DELETE_QUEUE[$PREV_SITE_ID]=$DELETE_AT
+                echo "QUEUED FOR DELETE: $PREV_SITE_ID (in ${DELETE_AFTER}s)"
+              fi
+              PREV_SITE_ID="$SITE_ID"
             fi
 
             REMAINING=$((MAX_DURATION - ELAPSED))
@@ -127,4 +164,13 @@ jobs:
             sleep "$FREQUENCY"
           done
 
-          echo "Rotation complete after $ITERATION iterations."
+          # ── Final cleanup: delete anything still in queue ─────────────────
+          echo ""
+          echo "Session ended. Running final deletion cleanup..."
+          for QID in "${!DELETE_QUEUE[@]}"; do
+            echo "Deleting: $QID"
+            curl -sf -X DELETE \
+              -H "Authorization: Bearer $NETLIFY_TOKEN" \
+              "https://api.netlify.com/api/v1/sites/$QID" || true
+          done
+          echo "Done. Total iterations: $ITERATION"
