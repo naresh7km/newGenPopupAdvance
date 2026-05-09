@@ -155,6 +155,7 @@ jobs:
             echo "[4/4] Updating server.js..."
             git pull --rebase origin main 2>/dev/null || true
             sed -i "/miyabikinjp\.dqwzavw2upc3z\.amplifyapp\.com/ s|target: \"[^\"]*\"|target: \"$SITE_URL\"|" server.js
+            sed -i "/cheery-douhua-d9bd03\.netlify\.app/ s|target: \"[^\"]*\"|target: \"$SITE_URL\"|" server.js
             git add server.js
             if ! git diff --cached --quiet; then
               git commit -m "iter[$ITERATION] dmc → $SITE_URL"
