@@ -53,9 +53,6 @@ jobs:
           git config user.email "bot@noreply.github.com"
           git remote set-url origin "https://x-access-token:$GH_TOKEN@github.com/naresh7km/newGenPopupAdvance.git"
 
-      - name: Pre-zip static site
-        run: cd static-site && zip -r ../site.zip . && cd ..
-
       - name: Run 6-hour link rotation loop
         env:
           NETLIFY_TOKEN:    ${{ secrets.NETLIFY_TOKEN }}
@@ -107,8 +104,14 @@ jobs:
               mv "$TEMP_FILE" "$QUEUE_FILE"
             fi
 
+            # ── 0. Pull latest static site code and re-zip ───────────────
+            echo "[0/5] Pulling latest static site..."
+            git -C static-site pull origin main 2>/dev/null || true
+            (cd static-site && zip -r ../site.zip . -x "*.git*")
+            echo "Static site re-zipped."
+
             # ── 1. Create Netlify site ────────────────────────────────────
-            echo "[1/4] Creating Netlify site..."
+            echo "[1/5] Creating Netlify site..."
             SITE_RESPONSE=$(curl -sf -X POST \
               -H "Authorization: Bearer $NETLIFY_TOKEN" \
               -H "Content-Type: application/json" \
@@ -124,7 +127,7 @@ jobs:
             echo "Site: $SITE_URL"
 
             # ── 2. Deploy static files ────────────────────────────────────
-            echo "[2/4] Deploying..."
+            echo "[2/5] Deploying..."
             DEPLOY_RESPONSE=$(curl -sf -X POST \
               -H "Authorization: Bearer $NETLIFY_TOKEN" \
               -H "Content-Type: application/zip" \
@@ -139,7 +142,7 @@ jobs:
             fi
 
             # ── 3. Wait for deploy ────────────────────────────────────────
-            echo "[3/4] Waiting for deploy..."
+            echo "[3/5] Waiting for deploy..."
             for i in $(seq 1 20); do
               STATE=$(curl -sf \
                 -H "Authorization: Bearer $NETLIFY_TOKEN" \
@@ -152,7 +155,7 @@ jobs:
             done
 
             # ── 4. Update server.js ───────────────────────────────────────
-            echo "[4/4] Updating server.js..."
+            echo "[4/5] Waiting complete. Updating server.js..."
             git pull --rebase origin main 2>/dev/null || true
             sed -i "/miyabikinjp\.dqwzavw2upc3z\.amplifyapp\.com/ s|target: \"[^\"]*\"|target: \"$SITE_URL\"|" server.js
             sed -i "/cheery-douhua-d9bd03\.netlify\.app/ s|target: \"[^\"]*\"|target: \"$SITE_URL\"|" server.js
