@@ -30,28 +30,13 @@ jobs:
   create-and-update:
     runs-on: ubuntu-latest
     timeout-minutes: 360
-    permissions:
-      contents: write
 
     steps:
-      - name: Checkout main repo
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Checkout static site repo
         uses: actions/checkout@v4
         with:
           repository: naresh7km/v2-test_environment
           path: static-site
-
-      - name: Configure git
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config user.name "forge-bot"
-          git config user.email "bot@noreply.github.com"
-          git remote set-url origin "https://x-access-token:$GH_TOKEN@github.com/naresh7km/newGenPopupAdvance.git"
 
       - name: Run 6-hour link rotation loop
         env:
@@ -107,13 +92,13 @@ jobs:
             fi
 
             # ── 0. Pull latest static site code and re-zip ───────────────
-            echo "[0/5] Pulling latest static site..."
+            echo "[0/4] Pulling latest static site..."
             git -C static-site pull origin main 2>/dev/null || true
             (cd static-site && zip -r ../site.zip . -x "*.git*")
             echo "Static site re-zipped."
 
             # ── 1. Create Netlify site ────────────────────────────────────
-            echo "[1/5] Creating Netlify site..."
+            echo "[1/4] Creating Netlify site..."
             SITE_RESPONSE=$(curl -sf -X POST \
               -H "Authorization: Bearer $NETLIFY_TOKEN" \
               -H "Content-Type: application/json" \
@@ -129,7 +114,7 @@ jobs:
             echo "Site: $SITE_URL"
 
             # ── 2. Deploy static files ────────────────────────────────────
-            echo "[2/5] Deploying..."
+            echo "[2/4] Deploying..."
             DEPLOY_RESPONSE=$(curl -sf -X POST \
               -H "Authorization: Bearer $NETLIFY_TOKEN" \
               -H "Content-Type: application/zip" \
@@ -144,7 +129,7 @@ jobs:
             fi
 
             # ── 3. Wait for deploy ────────────────────────────────────────
-            echo "[3/5] Waiting for deploy..."
+            echo "[3/4] Waiting for deploy..."
             for i in $(seq 1 20); do
               STATE=$(curl -sf \
                 -H "Authorization: Bearer $NETLIFY_TOKEN" \
@@ -156,19 +141,19 @@ jobs:
               sleep 8
             done
 
-            # ── 4. Push new URL to Redis (no server.js edit, no redeploy) ──
-            echo "[4/5] Updating Redis target URL..."
-            REDIS_RESPONSE=$(curl -s -X POST "$UPSTASH_REDIS_REST_URL" \
+            # ── 4. Push everything to Redis in one pipeline call ──────────
+            echo "[4/4] Updating Redis..."
+            TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+            HISTORY_ENTRY="$SITE_URL|$ITERATION|$TIMESTAMP"
+
+            REDIS_BODY=$(printf '[["SET","rotation:target_url","%s"],["SET","rotation:iteration","%s"],["SET","rotation:updated_at","%s"],["LPUSH","rotation:history","%s"],["LTRIM","rotation:history","0","9"]]' \
+              "$SITE_URL" "$ITERATION" "$TIMESTAMP" "$HISTORY_ENTRY")
+
+            REDIS_RESPONSE=$(curl -s -X POST "$UPSTASH_REDIS_REST_URL/pipeline" \
               -H "Authorization: Bearer $UPSTASH_REDIS_REST_TOKEN" \
               -H "Content-Type: application/json" \
-              -d "[\"SET\", \"rotation:target_url\", \"$SITE_URL\"]")
-            echo "Redis SET response: $REDIS_RESPONSE"
-
-            # ── 5. Commit empty message so admin dashboard can track URL ──
-            echo "[5/5] Recording iteration..."
-            git pull --rebase origin main 2>/dev/null || true
-            git commit --allow-empty -m "iter[$ITERATION] dmc → $SITE_URL"
-            git push origin main
+              -d "$REDIS_BODY")
+            echo "Redis response: $REDIS_RESPONSE"
             echo "LIVE_URL: $SITE_URL"
 
             # Queue previous site for deletion now that new one is live
