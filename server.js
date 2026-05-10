@@ -94,7 +94,7 @@ const ORIGIN_GROUPS = {
   },
   dmc: {
     // "https://main.TEMPd2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://v2-test-environment-a.vercel.app", redisKey: "rotation:target_url" },
-    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://v2-test-environment-a.vercel.app" },
+    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://v2-test-environment-b.vercel.app" },
     "https://cozy-kheer-cea1f9.netlify.app": { method: "iframe", target: "elegant-truffle-a0f9f7.netlify.app", redisKey: "rotation:target_url"  },
   },
   aomine: {
