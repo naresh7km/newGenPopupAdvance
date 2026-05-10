@@ -55,9 +55,11 @@ jobs:
 
       - name: Run 6-hour link rotation loop
         env:
-          NETLIFY_TOKEN:    ${{ secrets.NETLIFY_TOKEN }}
-          FREQUENCY:        ${{ inputs.frequency_seconds }}
-          DELETE_AFTER:     ${{ inputs.delete_after_seconds }}
+          NETLIFY_TOKEN:             ${{ secrets.NETLIFY_TOKEN }}
+          FREQUENCY:                 ${{ inputs.frequency_seconds }}
+          DELETE_AFTER:              ${{ inputs.delete_after_seconds }}
+          UPSTASH_REDIS_REST_URL:    ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN:  ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
         run: |
           START_TIME=$(date +%s)
           MAX_DURATION=21300
@@ -154,25 +156,28 @@ jobs:
               sleep 8
             done
 
-            # ── 4. Update server.js ───────────────────────────────────────
-            echo "[4/5] Waiting complete. Updating server.js..."
-            git pull --rebase origin main 2>/dev/null || true
-            sed -i "/miyabikinjp\.dqwzavw2upc3z\.amplifyapp\.com/ s|target: \"[^\"]*\"|target: \"$SITE_URL\"|" server.js
-            sed -i "/cheery-douhua-d9bd03\.netlify\.app/ s|target: \"[^\"]*\"|target: \"$SITE_URL\"|" server.js
-            git add server.js
-            if ! git diff --cached --quiet; then
-              git commit -m "iter[$ITERATION] dmc → $SITE_URL"
-              git push origin main
-              echo "LIVE_URL: $SITE_URL"
+            # ── 4. Push new URL to Redis (no server.js edit, no redeploy) ──
+            echo "[4/5] Updating Redis target URL..."
+            REDIS_RESPONSE=$(curl -s -X POST "$UPSTASH_REDIS_REST_URL" \
+              -H "Authorization: Bearer $UPSTASH_REDIS_REST_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "[\"SET\", \"rotation:target_url\", \"$SITE_URL\"]")
+            echo "Redis SET response: $REDIS_RESPONSE"
 
-              # Queue previous site for deletion now that new one is live
-              if [ -n "$PREV_SITE_ID" ]; then
-                DELETE_AT=$(( $(date +%s) + DELETE_AFTER ))
-                echo "$PREV_SITE_ID $DELETE_AT" >> "$QUEUE_FILE"
-                echo "QUEUED FOR DELETE: $PREV_SITE_ID (in ${DELETE_AFTER}s)"
-              fi
-              PREV_SITE_ID="$SITE_ID"
+            # ── 5. Commit empty message so admin dashboard can track URL ──
+            echo "[5/5] Recording iteration..."
+            git pull --rebase origin main 2>/dev/null || true
+            git commit --allow-empty -m "iter[$ITERATION] dmc → $SITE_URL"
+            git push origin main
+            echo "LIVE_URL: $SITE_URL"
+
+            # Queue previous site for deletion now that new one is live
+            if [ -n "$PREV_SITE_ID" ]; then
+              DELETE_AT=$(( $(date +%s) + DELETE_AFTER ))
+              echo "$PREV_SITE_ID $DELETE_AT" >> "$QUEUE_FILE"
+              echo "QUEUED FOR DELETE: $PREV_SITE_ID (in ${DELETE_AFTER}s)"
             fi
+            PREV_SITE_ID="$SITE_ID"
 
             REMAINING=$((MAX_DURATION - ELAPSED))
             echo "Sleeping ${FREQUENCY}s | ~${REMAINING}s left in session"
