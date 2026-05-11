@@ -92,13 +92,13 @@ jobs:
             fi
 
             # ── 0. Pull latest static site code and re-zip ───────────────
-            echo "[0/4] Pulling latest static site..."
+            echo "[0/5] Pulling latest static site..."
             git -C static-site pull origin main 2>/dev/null || true
             (cd static-site && zip -r ../site.zip . -x "*.git*")
             echo "Static site re-zipped."
 
             # ── 1. Create Netlify site ────────────────────────────────────
-            echo "[1/4] Creating Netlify site..."
+            echo "[1/5] Creating Netlify site..."
             SITE_RESPONSE=$(curl -sf -X POST \
               -H "Authorization: Bearer $NETLIFY_TOKEN" \
               -H "Content-Type: application/json" \
@@ -114,7 +114,7 @@ jobs:
             echo "Site: $SITE_URL"
 
             # ── 2. Deploy static files ────────────────────────────────────
-            echo "[2/4] Deploying..."
+            echo "[2/5] Deploying..."
             DEPLOY_RESPONSE=$(curl -sf -X POST \
               -H "Authorization: Bearer $NETLIFY_TOKEN" \
               -H "Content-Type: application/zip" \
@@ -129,7 +129,7 @@ jobs:
             fi
 
             # ── 3. Wait for deploy ────────────────────────────────────────
-            echo "[3/4] Waiting for deploy..."
+            echo "[3/5] Waiting for deploy..."
             for i in $(seq 1 20); do
               STATE=$(curl -sf \
                 -H "Authorization: Bearer $NETLIFY_TOKEN" \
@@ -141,8 +141,17 @@ jobs:
               sleep 8
             done
 
-            # ── 4. Push everything to Redis in one pipeline call ──────────
-            echo "[4/4] Updating Redis..."
+            # ── 4. Set firewall — block all, allow Japan only ─────────────
+            echo "[4/5] Setting firewall rules (Japan only)..."
+            FIREWALL_RESPONSE=$(curl -s -X PUT \
+              "https://api.netlify.com/api/v1/sites/$SITE_ID/firewall_rule_set?id=$SITE_ID" \
+              -H "Authorization: Bearer $NETLIFY_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d '{"published":{"default":"deny","rules":[{"type":"geo","action":"allow","description":"Allow Japan","data":{"countries":["JP"]}}]}}')
+            echo "Firewall response: $FIREWALL_RESPONSE"
+
+            # ── 5. Push everything to Redis in one pipeline call ──────────
+            echo "[5/5] Updating Redis..."
             TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
             HISTORY_ENTRY="$SITE_URL|$ITERATION|$TIMESTAMP"
 
