@@ -898,7 +898,7 @@ app.post("/admin/analytics/clear-stale", async (req, res) => {
 
 app.get("/admin/analytics", async (req, res) => {
   try {
-    const ids = await redis.zrevrange(KEY_ANALYTICS, 0, 199);
+    const ids = await redis.zrevrange(KEY_ANALYTICS, 0, ANALYTICS_MAX - 1);
     const sessions = [];
     for (const id of ids) {
       const s = await redis.hgetall(keySession(id));
