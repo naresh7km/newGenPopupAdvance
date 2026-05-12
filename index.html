@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analytics Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f172a;
+      --surface:   #1e293b;
+      --border:    #334155;
+      --text:      #e2e8f0;
+      --muted:     #94a3b8;
+      --green:     #22c55e;
+      --yellow:    #eab308;
+      --red:       #ef4444;
+      --blue:      #3b82f6;
+      --purple:    #a78bfa;
+      --row-hover: #263347;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 13px;
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header h1 { font-size: 18px; font-weight: 600; letter-spacing: .3px; }
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--green);
+    }
+    .live-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s infinite;
+    }
+    .live-dot.disconnected { background: var(--red); animation: none; }
+    @keyframes pulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: .5; transform: scale(1.3); }
+    }
+
+    /* ── Stats bar ──────────────────────────────────── */
+    .stats {
+      display: flex;
+      gap: 12px;
+      padding: 16px 24px;
+      flex-wrap: wrap;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 20px;
+      min-width: 140px;
+      flex: 1;
+    }
+    .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 4px; }
+    .stat-value { font-size: 26px; font-weight: 700; }
+    .stat-value.green  { color: var(--green); }
+    .stat-value.yellow { color: var(--yellow); }
+    .stat-value.blue   { color: var(--blue); }
+    .stat-value.purple { color: var(--purple); }
+
+    /* ── Toolbar ────────────────────────────────────── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 24px 12px;
+      flex-wrap: wrap;
+    }
+    .toolbar input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 6px 12px;
+      font-size: 12px;
+      width: 220px;
+      outline: none;
+    }
+    .toolbar input:focus { border-color: var(--blue); }
+    .toolbar button {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      padding: 6px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: color .15s, border-color .15s;
+    }
+    .toolbar button:hover { color: var(--text); border-color: var(--blue); }
+    .session-count { margin-left: auto; color: var(--muted); font-size: 12px; }
+
+    /* ── Table ──────────────────────────────────────── */
+    .table-wrap {
+      overflow-x: auto;
+      padding: 0 24px 40px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      white-space: nowrap;
+    }
+    thead th {
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 57px;
+      cursor: pointer;
+      user-select: none;
+    }
+    thead th:hover { color: var(--text); }
+    thead th .sort-arrow { margin-left: 4px; opacity: .4; }
+    thead th.sorted .sort-arrow { opacity: 1; color: var(--blue); }
+
+    tbody tr {
+      border-bottom: 1px solid rgba(51,65,85,.5);
+      transition: background .1s;
+    }
+    tbody tr:hover { background: var(--row-hover); }
+    tbody tr.new-flash { animation: rowflash .6s ease; }
+    @keyframes rowflash {
+      0%   { background: rgba(59,130,246,.25); }
+      100% { background: transparent; }
+    }
+
+    td {
+      padding: 8px 12px;
+      vertical-align: middle;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    td.nowrap { white-space: nowrap; }
+
+    /* Status dot in row */
+    .row-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      margin-right: 6px;
+      flex-shrink: 0;
+    }
+    .dot-active   { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .dot-recent   { background: var(--yellow); }
+    .dot-inactive { background: #4b5563; }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+    }
+    .badge-gclid  { background: rgba(167,139,250,.18); color: var(--purple); }
+    .badge-no     { background: rgba(75,85,99,.3);     color: #6b7280; }
+    .badge-fs     { background: rgba(34,197,94,.15);   color: var(--green); }
+    .badge-hidden { background: rgba(234,179,8,.15);   color: var(--yellow); }
+    .badge-end    { background: rgba(239,68,68,.15);   color: var(--red); }
+
+    /* Tooltip */
+    td[title] { cursor: default; }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      padding: 60px 0;
+      color: var(--muted);
+    }
+    .empty p { margin-top: 8px; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Analytics Dashboard</h1>
+  <div class="live-badge">
+    <span class="live-dot" id="live-dot"></span>
+    <span id="live-label">LIVE</span>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="stat-card">
+    <div class="stat-label">Total Sessions</div>
+    <div class="stat-value blue" id="stat-total">0</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Active (5 min)</div>
+    <div class="stat-value green" id="stat-active">0</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">With GCLID</div>
+    <div class="stat-value purple" id="stat-gclid">0</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Total Clicks</div>
+    <div class="stat-value yellow" id="stat-clicks">0</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Avg Duration</div>
+    <div class="stat-value" id="stat-duration" style="color:var(--text)">—</div>
+  </div>
+</div>
+
+<div class="toolbar">
+  <input id="filter-input" type="text" placeholder="Filter by IP, TZ, GCLID, URL…" />
+  <button onclick="clearFilter()">Clear</button>
+  <button onclick="loadSessions()">↺ Refresh</button>
+  <span class="session-count" id="row-count"></span>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th onclick="sortBy('lastSeen')" id="th-lastSeen">Time <span class="sort-arrow">↓</span></th>
+        <th onclick="sortBy('ip')"       id="th-ip">IP <span class="sort-arrow">↕</span></th>
+        <th onclick="sortBy('timezone')" id="th-timezone">Timezone <span class="sort-arrow">↕</span></th>
+        <th>GCLID</th>
+        <th onclick="sortBy('url')" id="th-url">URL <span class="sort-arrow">↕</span></th>
+        <th onclick="sortBy('duration')" id="th-duration">Duration <span class="sort-arrow">↕</span></th>
+        <th onclick="sortBy('clicks')" id="th-clicks">Clicks <span class="sort-arrow">↕</span></th>
+        <th>Screen</th>
+        <th>Fullscr</th>
+        <th>Hidden</th>
+        <th>Browser</th>
+        <th>Lang</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <div class="empty" id="empty-state" style="display:none">
+    <div style="font-size:32px">📡</div>
+    <p>No sessions yet. Make sure <strong>tracker.js</strong> is loaded on your frontend.</p>
+  </div>
+</div>
+
+<script>
+// ── Data store ─────────────────────────────────────────────────────────
+var sessions = {};   // sessionId → object
+var sortKey = "lastSeen";
+var sortDir = -1;    // -1 = desc, 1 = asc
+var filterText = "";
+
+// ── Helpers ────────────────────────────────────────────────────────────
+function timeAgo(tsMs) {
+  if (!tsMs) return "—";
+  var diff = Math.floor((Date.now() - Number(tsMs)) / 1000);
+  if (diff < 5)   return "just now";
+  if (diff < 60)  return diff + "s ago";
+  if (diff < 3600) {
+    var m = Math.floor(diff / 60), s = diff % 60;
+    return m + "m " + (s ? s + "s" : "") + " ago";
+  }
+  var h = Math.floor(diff / 3600), m2 = Math.floor((diff % 3600) / 60);
+  return h + "h " + (m2 ? m2 + "m " : "") + "ago";
+}
+
+function fmtDuration(secs) {
+  secs = Number(secs) || 0;
+  if (secs < 60) return secs + "s";
+  return Math.floor(secs / 60) + "m " + (secs % 60) + "s";
+}
+
+function statusClass(lastSeenMs) {
+  var age = Date.now() - Number(lastSeenMs || 0);
+  if (age < 5  * 60 * 1000) return "dot-active";
+  if (age < 30 * 60 * 1000) return "dot-recent";
+  return "dot-inactive";
+}
+
+function parseBrowser(ua) {
+  if (!ua) return "?";
+  if (/Edg\//.test(ua))    return "Edge";
+  if (/OPR\//.test(ua))    return "Opera";
+  if (/Chrome\//.test(ua)) return /Mobile/.test(ua) ? "Chrome/M" : "Chrome";
+  if (/Firefox\//.test(ua))return "Firefox";
+  if (/Safari\//.test(ua)) return /Mobile|iPhone|iPad/.test(ua) ? "Safari/M" : "Safari";
+  return "Other";
+}
+
+function shortUrl(url) {
+  try {
+    var u = new URL(url);
+    return u.hostname + (u.pathname !== "/" ? u.pathname : "");
+  } catch (_) { return url || "—"; }
+}
+
+function esc(s) {
+  return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function buildRow(s) {
+  var dot    = statusClass(s.lastSeen);
+  var since  = timeAgo(s.startTime);
+  var seen   = timeAgo(s.lastSeen);
+  var gclid  = (s.gclid || "").trim();
+  var isFS   = s.isFullscreen === "true";
+  var hidden = Number(s.hiddenCount) || 0;
+  var url    = shortUrl(s.url);
+  var br     = parseBrowser(s.userAgent);
+  var screen = (s.screenWidth && s.screenHeight) ? s.screenWidth + "×" + s.screenHeight : "—";
+
+  var gclidBadge = gclid
+    ? '<span class="badge badge-gclid" title="' + esc(gclid) + '">' + esc(gclid.slice(0,14)) + (gclid.length > 14 ? "…" : "") + '</span>'
+    : '<span class="badge badge-no">—</span>';
+
+  var fsBadge = isFS
+    ? '<span class="badge badge-fs">Yes</span>'
+    : '<span style="color:var(--muted)">—</span>';
+
+  var hiddenBadge = hidden > 0
+    ? '<span class="badge badge-hidden">' + hidden + 'x</span>'
+    : '<span style="color:var(--muted)">—</span>';
+
+  var endBadge = (s.event === "end")
+    ? ' <span class="badge badge-end">left</span>'
+    : "";
+
+  return [
+    '<td class="nowrap"><span class="row-dot ' + dot + '"></span><span title="Started: ' + since + '&#10;Last seen: ' + seen + '">' + seen + '</span>' + endBadge + '</td>',
+    '<td title="' + esc(s.ip) + '">' + esc(s.ip) + '</td>',
+    '<td title="' + esc(s.timezone) + '">' + esc(s.timezone || "—") + '</td>',
+    '<td>' + gclidBadge + '</td>',
+    '<td title="' + esc(s.url) + '">' + esc(url) + '</td>',
+    '<td class="nowrap">' + fmtDuration(s.duration) + '</td>',
+    '<td>' + (Number(s.clicks) || 0) + '</td>',
+    '<td>' + esc(screen) + '</td>',
+    '<td>' + fsBadge + '</td>',
+    '<td>' + hiddenBadge + '</td>',
+    '<td title="' + esc(s.userAgent) + '">' + esc(br) + '</td>',
+    '<td>' + esc(s.language || "—") + '</td>',
+  ].join("");
+}
+
+// ── Render ─────────────────────────────────────────────────────────────
+function render() {
+  var list = Object.values(sessions);
+
+  // Filter
+  var q = filterText.toLowerCase();
+  if (q) {
+    list = list.filter(function(s) {
+      return (s.ip       || "").toLowerCase().includes(q) ||
+             (s.timezone || "").toLowerCase().includes(q) ||
+             (s.gclid    || "").toLowerCase().includes(q) ||
+             (s.url      || "").toLowerCase().includes(q) ||
+             (s.language || "").toLowerCase().includes(q);
+    });
+  }
+
+  // Sort
+  list.sort(function(a, b) {
+    var av = Number(a[sortKey]) || (typeof a[sortKey] === "string" ? a[sortKey] : 0);
+    var bv = Number(b[sortKey]) || (typeof b[sortKey] === "string" ? b[sortKey] : 0);
+    if (av < bv) return sortDir;
+    if (av > bv) return -sortDir;
+    return 0;
+  });
+
+  var tbody = document.getElementById("tbody");
+  if (!list.length) {
+    tbody.innerHTML = "";
+    document.getElementById("empty-state").style.display = "block";
+    document.getElementById("row-count").textContent = "0 sessions";
+    updateStats();
+    return;
+  }
+  document.getElementById("empty-state").style.display = "none";
+  document.getElementById("row-count").textContent = list.length + " session" + (list.length !== 1 ? "s" : "");
+
+  tbody.innerHTML = list.map(function(s) {
+    return '<tr id="row-' + esc(s.id) + '">' + buildRow(s) + '</tr>';
+  }).join("");
+
+  updateStats();
+}
+
+function updateStats() {
+  var list = Object.values(sessions);
+  var now = Date.now();
+  var active = list.filter(function(s) { return now - Number(s.lastSeen) < 5 * 60 * 1000; }).length;
+  var gclidCount = list.filter(function(s) { return (s.gclid || "").trim().length > 0; }).length;
+  var totalClicks = list.reduce(function(acc, s) { return acc + (Number(s.clicks) || 0); }, 0);
+  var durList = list.filter(function(s) { return Number(s.duration) > 0; });
+  var avgDur = durList.length ? Math.round(durList.reduce(function(a,s){ return a + Number(s.duration); },0) / durList.length) : 0;
+
+  document.getElementById("stat-total").textContent   = list.length;
+  document.getElementById("stat-active").textContent  = active;
+  document.getElementById("stat-gclid").textContent   = gclidCount;
+  document.getElementById("stat-clicks").textContent  = totalClicks;
+  document.getElementById("stat-duration").textContent = avgDur ? fmtDuration(avgDur) : "—";
+}
+
+// Refresh relative times without full re-render
+function tickTimes() {
+  var rows = document.querySelectorAll("#tbody tr");
+  rows.forEach(function(row) {
+    var id = row.id.replace("row-", "");
+    var s = sessions[id];
+    if (!s) return;
+    var dot = row.querySelector(".row-dot");
+    if (dot) { dot.className = "row-dot " + statusClass(s.lastSeen); }
+  });
+  updateStats();
+}
+
+// ── Sort ───────────────────────────────────────────────────────────────
+function sortBy(key) {
+  if (sortKey === key) { sortDir = -sortDir; }
+  else { sortKey = key; sortDir = -1; }
+  document.querySelectorAll("thead th").forEach(function(th) {
+    th.classList.remove("sorted");
+    var arr = th.querySelector(".sort-arrow");
+    if (arr) arr.textContent = "↕";
+  });
+  var th = document.getElementById("th-" + key);
+  if (th) {
+    th.classList.add("sorted");
+    var arr = th.querySelector(".sort-arrow");
+    if (arr) arr.textContent = sortDir === -1 ? "↓" : "↑";
+  }
+  render();
+}
+
+// ── Filter ─────────────────────────────────────────────────────────────
+document.getElementById("filter-input").addEventListener("input", function() {
+  filterText = this.value;
+  render();
+});
+function clearFilter() {
+  document.getElementById("filter-input").value = "";
+  filterText = "";
+  render();
+}
+
+// ── Load initial data ──────────────────────────────────────────────────
+function loadSessions() {
+  fetch("/admin/analytics")
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      sessions = {};
+      (data.sessions || []).forEach(function(s) { sessions[s.id] = s; });
+      render();
+    })
+    .catch(function() {});
+}
+
+// ── SSE live stream ────────────────────────────────────────────────────
+var evtSource = null;
+
+function connectSSE() {
+  if (evtSource) { evtSource.close(); }
+
+  evtSource = new EventSource("/admin/stream");
+
+  evtSource.addEventListener("open", function() {
+    var dot   = document.getElementById("live-dot");
+    var label = document.getElementById("live-label");
+    dot.className   = "live-dot";
+    label.textContent = "LIVE";
+  });
+
+  evtSource.addEventListener("session", function(e) {
+    var s = JSON.parse(e.data);
+    var isNew = !sessions[s.id];
+    sessions[s.id] = s;
+    render();
+    if (isNew) {
+      var row = document.getElementById("row-" + s.id);
+      if (row) { row.classList.add("new-flash"); }
+    }
+  });
+
+  evtSource.addEventListener("update", function(e) {
+    var s = JSON.parse(e.data);
+    if (sessions[s.id]) {
+      Object.assign(sessions[s.id], s);
+      var row = document.getElementById("row-" + s.id);
+      if (row) { row.innerHTML = buildRow(sessions[s.id]); }
+      else { render(); }
+    } else {
+      sessions[s.id] = s;
+      render();
+    }
+    updateStats();
+  });
+
+  evtSource.addEventListener("error", function() {
+    var dot   = document.getElementById("live-dot");
+    var label = document.getElementById("live-label");
+    dot.className   = "live-dot disconnected";
+    label.textContent = "RECONNECTING…";
+    evtSource.close();
+    setTimeout(connectSSE, 3000);
+  });
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────
+loadSessions();
+connectSSE();
+
+// Tick relative times every 15 seconds
+setInterval(tickTimes, 15000);
+</script>
+</body>
+</html>
