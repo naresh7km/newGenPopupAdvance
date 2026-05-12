@@ -750,7 +750,9 @@ const KEY_ANALYTICS        = "analytics:sessions";
 const ANALYTICS_MAX        = 500;
 const ANALYTICS_SESSION_TTL = 48 * 3600;
 
-const keySession = (id) => `analytics:session:${id}`;
+const keySession       = (id) => `analytics:session:${id}`;
+const keySessionEvents = (id) => `analytics:session:${id}:events`;
+const MAX_TIMELINE_EVENTS = 500;
 
 const sseClients = new Set();
 
@@ -833,6 +835,40 @@ app.post("/track", async (req, res) => {
   } catch (err) {
     console.error("[track]", err.message);
     res.status(500).json({ error: "tracking failed" });
+  }
+});
+
+app.post("/track/events", async (req, res) => {
+  try {
+    const { sessionId, events } = req.body || {};
+    if (!sessionId || !Array.isArray(events) || !events.length) {
+      return res.status(400).json({ error: "sessionId and events[] required" });
+    }
+
+    const eKey = keySessionEvents(sessionId);
+    const tx = redis.multi();
+    for (const ev of events) {
+      tx.rpush(eKey, JSON.stringify(ev));
+    }
+    tx.ltrim(eKey, -MAX_TIMELINE_EVENTS, -1);
+    tx.expire(eKey, ANALYTICS_SESSION_TTL);
+    await tx.exec();
+
+    broadcastSSE("events", { sessionId, events });
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error("[track/events]", err.message);
+    res.status(500).json({ error: "failed" });
+  }
+});
+
+app.get("/admin/analytics/session/:id/events", async (req, res) => {
+  try {
+    const raw = await redis.lrange(keySessionEvents(req.params.id), 0, -1);
+    const events = raw.map((r) => { try { return JSON.parse(r); } catch { return null; } }).filter(Boolean);
+    res.json({ events });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
