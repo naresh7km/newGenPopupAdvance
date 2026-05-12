@@ -10,12 +10,8 @@
 (function () {
   var BACKEND = (window.__TRACKER_BACKEND__ || "https://popupmax-dmc5.onrender.com").replace(/\/$/, "");
 
-  // ── Session ID ──────────────────────────────────────────────────────
-  var sid = sessionStorage.getItem("_t_sid");
-  if (!sid) {
-    sid = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-    sessionStorage.setItem("_t_sid", sid);
-  }
+  // ── Session ID — fresh every page load so each visit is its own row ──
+  var sid = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
   var startTime = Date.now();
   var clickCount = 0;
