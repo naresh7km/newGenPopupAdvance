@@ -106,8 +106,11 @@
 
   // ── Fullscreen ────────────────────────────────────────────────────────
   function onFullscreenChange() {
+    // Capture state first — some browsers fire the event before updating
+    // document.fullscreenElement, so we pass it explicitly rather than
+    // letting send() re-read it internally.
     var isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
-    send("fullscreen");
+    send("fullscreen", { isFullscreen: isFS });
     recordEvent(isFS ? "fullscreen_enter" : "fullscreen_exit", {});
   }
   document.addEventListener("fullscreenchange",       onFullscreenChange);
@@ -120,11 +123,11 @@
     recordEvent(document.hidden ? "page_hidden" : "page_visible", {});
   });
 
-  // ── Heartbeat — also flushes any pending timeline events ──────────────
+  // ── Heartbeat — 15 s so stale sessions go gray within ~35 s of closing ─
   setInterval(function () {
     send("heartbeat");
     flushEvents();
-  }, 30000);
+  }, 15000);
 
   // ── End ───────────────────────────────────────────────────────────────
   window.addEventListener("beforeunload", function () {
