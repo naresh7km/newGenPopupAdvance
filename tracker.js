@@ -62,8 +62,10 @@
       gclid: getGclid(),
       url: window.location.href,
       referrer: document.referrer || "",
-      screenWidth: screen.width,
-      screenHeight: screen.height,
+      screenWidth:    screen.width,
+      screenHeight:   screen.height,
+      viewportWidth:  window.innerWidth,
+      viewportHeight: window.innerHeight,
       language: navigator.language || "",
       duration: Math.floor((Date.now() - startTime) / 1000),
       clicks: clickCount,
@@ -88,6 +90,18 @@
   document.addEventListener("click", function (e) {
     clickCount++;
     recordEvent("click", { x: Math.round(e.clientX), y: Math.round(e.clientY) });
+  });
+
+  // ── Mouse movement (sampled max 1/sec, min 15px delta) ───────────────
+  var lastMX = -1, lastMY = -1, mouseSampleTimer = null;
+  document.addEventListener("mousemove", function (e) {
+    if (mouseSampleTimer) return;
+    mouseSampleTimer = setTimeout(function () { mouseSampleTimer = null; }, 1000);
+    var dx = e.clientX - lastMX, dy = e.clientY - lastMY;
+    if (lastMX < 0 || Math.sqrt(dx * dx + dy * dy) > 15) {
+      lastMX = e.clientX; lastMY = e.clientY;
+      recordEvent("mouse", { x: Math.round(e.clientX), y: Math.round(e.clientY) });
+    }
   });
 
   // ── Keyboard ─────────────────────────────────────────────────────────
