@@ -85,7 +85,7 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://naotoshidairy.com": { method: "iframe", target: "https://4-v2-test-environment.vercel.app" },
+    "https://naotoshidairy.com": { method: "iframe", target: "https://5-v2-test-environment.vercel.app" },
   },
   dmc: {
     // "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://n-rand.vercel.app", redisKey: "rotation:target_url" },
