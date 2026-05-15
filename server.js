@@ -813,11 +813,10 @@ app.post("/track", async (req, res) => {
       if (body.isFullscreen!== undefined) updates.isFullscreen = String(body.isFullscreen);
       if (body.isHidden !== undefined) {
         updates.isHidden = String(body.isHidden);
-        // Only count a new hidden transition — heartbeats also carry isHidden:true
-        // while the tab is hidden, which was causing hiddenCount to inflate.
-        if (body.event === "visibility" && (body.isHidden === true || body.isHidden === "true")) {
-          updates.hiddenCount = (parseInt(existing.hiddenCount, 10) || 0) + 1;
-        }
+        // hiddenCount is now derived exclusively from /track/events (page_hidden
+        // events in the timeline batch). Do NOT increment it here — the two
+        // endpoints are independent fetches and can arrive out of order or one
+        // can fail, causing the counter and timeline to diverge.
       }
       if (body.timezone) updates.timezone = body.timezone;
       if (body.gclid)    updates.gclid    = body.gclid;
@@ -850,6 +849,14 @@ app.post("/track/events", async (req, res) => {
     tx.ltrim(eKey, -MAX_TIMELINE_EVENTS, -1);
     tx.expire(eKey, ANALYTICS_SESSION_TTL);
     await tx.exec();
+
+    // Derive hiddenCount exclusively from page_hidden events in the timeline
+    // batch. This keeps the counter in sync with what the timeline actually
+    // shows, since both come from the same /track/events payload.
+    const hiddenIncrements = events.filter(ev => ev.type === "page_hidden").length;
+    if (hiddenIncrements > 0) {
+      await redis.hincrby(keySession(sessionId), "hiddenCount", hiddenIncrements);
+    }
 
     broadcastSSE("events", { sessionId, events });
     res.status(200).json({ ok: true });
