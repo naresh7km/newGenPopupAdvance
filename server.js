@@ -740,12 +740,12 @@ app.post("/admin/reset", async (req, res) => {
 // ─── Analytics ────────────────────────────────────────────────────
 
 const KEY_ANALYTICS        = "analytics:sessions";
-const ANALYTICS_MAX        = 500;
+const ANALYTICS_MAX        = 3000;
 const ANALYTICS_SESSION_TTL = 48 * 3600;
 
 const keySession       = (id) => `analytics:session:${id}`;
 const keySessionEvents = (id) => `analytics:session:${id}:events`;
-const MAX_TIMELINE_EVENTS = 500;
+const MAX_TIMELINE_EVENTS = 2000;
 
 const sseClients = new Set();
 
@@ -787,8 +787,10 @@ app.post("/track", async (req, res) => {
         url:         body.url         || "",
         referrer:    body.referrer    || "",
         language:    body.language    || "",
-        screenWidth: body.screenWidth || 0,
-        screenHeight:body.screenHeight|| 0,
+        screenWidth:   body.screenWidth    || 0,
+        screenHeight:  body.screenHeight   || 0,
+        viewportWidth: body.viewportWidth  || 0,
+        viewportHeight:body.viewportHeight || 0,
         startTime:   now,
         lastSeen:    now,
         duration:    0,
@@ -809,9 +811,11 @@ app.post("/track", async (req, res) => {
       if (body.duration    !== undefined) updates.duration    = Number(body.duration)    || 0;
       if (body.clicks      !== undefined) updates.clicks      = Number(body.clicks)      || 0;
       if (body.isFullscreen!== undefined) updates.isFullscreen = String(body.isFullscreen);
-      if (body.isHidden    !== undefined) {
+      if (body.isHidden !== undefined) {
         updates.isHidden = String(body.isHidden);
-        if (body.isHidden === true || body.isHidden === "true") {
+        // Only count a new hidden transition — heartbeats also carry isHidden:true
+        // while the tab is hidden, which was causing hiddenCount to inflate.
+        if (body.event === "visibility" && (body.isHidden === true || body.isHidden === "true")) {
           updates.hiddenCount = (parseInt(existing.hiddenCount, 10) || 0) + 1;
         }
       }
@@ -865,39 +869,71 @@ app.get("/admin/analytics/session/:id/events", async (req, res) => {
   }
 });
 
-app.post("/admin/analytics/clear-stale", async (req, res) => {
+// Helper: convert "YYYY-MM-DD" (client local date sent as UTC timestamps) to score range
+function getScoreRange(from, to) {
+  const minScore = from ? Number(from) : "-inf";
+  const maxScore = to   ? Number(to)   : "+inf";
+  return { minScore, maxScore };
+}
+
+app.get("/admin/analytics", async (req, res) => {
   try {
-    const ids = await redis.zrevrange(KEY_ANALYTICS, 0, -1);
-    const cutoff = Date.now() - 5 * 60 * 1000;
-    const stale = [];
-    for (const id of ids) {
-      const s = await redis.hgetall(keySession(id));
-      if (!s || !s.id || Number(s.lastSeen) < cutoff) stale.push(id);
-    }
-    if (stale.length) {
-      const tx = redis.multi();
-      for (const id of stale) {
-        tx.del(keySession(id));
-        tx.del(keySessionEvents(id));
-        tx.zrem(KEY_ANALYTICS, id);
-      }
-      await tx.exec();
-    }
-    res.json({ cleared: stale.length });
+    const { from, to, page = "1", pageSize = "50" } = req.query;
+    const { minScore, maxScore } = getScoreRange(from, to);
+    const limit  = Math.min(Number(pageSize), 100);
+    const offset = (Number(page) - 1) * limit;
+
+    const [ids, total] = await Promise.all([
+      redis.zrevrangebyscore(KEY_ANALYTICS, maxScore, minScore, "LIMIT", offset, limit),
+      redis.zcount(KEY_ANALYTICS, minScore, maxScore),
+    ]);
+
+    // Pipeline all hgetall calls in one round-trip
+    const pipeline = redis.pipeline();
+    for (const id of ids) pipeline.hgetall(keySession(id));
+    const results = await pipeline.exec();
+
+    const sessions = results
+      .map(([, s]) => s)
+      .filter((s) => s && s.id);
+
+    res.json({ sessions, total, page: Number(page), pageSize: limit });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get("/admin/analytics", async (req, res) => {
+app.get("/admin/analytics/stats", async (req, res) => {
   try {
-    const ids = await redis.zrevrange(KEY_ANALYTICS, 0, ANALYTICS_MAX - 1);
-    const sessions = [];
-    for (const id of ids) {
-      const s = await redis.hgetall(keySession(id));
-      if (s && s.id) sessions.push(s);
+    const { from, to } = req.query;
+    const { minScore, maxScore } = getScoreRange(from, to);
+
+    const [total, ids] = await Promise.all([
+      redis.zcount(KEY_ANALYTICS, minScore, maxScore),
+      redis.zrevrangebyscore(KEY_ANALYTICS, maxScore, minScore, "LIMIT", 0, 1000),
+    ]);
+
+    const pipeline = redis.pipeline();
+    for (const id of ids) pipeline.hgetall(keySession(id));
+    const results = await pipeline.exec();
+
+    let withGclid = 0, totalClicks = 0, totalDuration = 0, durCount = 0, active = 0;
+    const now = Date.now();
+    for (const [, s] of results) {
+      if (!s || !s.id) continue;
+      if ((s.gclid || "").trim()) withGclid++;
+      totalClicks += Number(s.clicks) || 0;
+      if (Number(s.duration) > 0) { totalDuration += Number(s.duration); durCount++; }
+      if (now - Number(s.lastSeen) < 30 * 1000) active++;
     }
-    res.json({ sessions, total: sessions.length });
+
+    res.json({
+      total,
+      active,
+      withGclid,
+      totalClicks,
+      avgDuration: durCount ? Math.round(totalDuration / durCount) : 0,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
