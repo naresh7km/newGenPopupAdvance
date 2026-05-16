@@ -795,7 +795,8 @@ app.post("/track", async (req, res) => {
         lastSeen:    now,
         duration:    0,
         clicks:      0,
-        isFullscreen:"false",
+        isFullscreen:  "false",
+        hadFullscreen: "false",   // set to "true" once and never reset
         isHidden:    "false",
         hiddenCount: 0,
       };
@@ -808,12 +809,29 @@ app.post("/track", async (req, res) => {
       broadcastSSE("session", session);
     } else {
       const updates = { lastSeen: now, event };
-      if (body.duration    !== undefined) updates.duration    = Number(body.duration)    || 0;
-      if (body.clicks      !== undefined) updates.clicks      = Number(body.clicks)      || 0;
-      if (body.isFullscreen!== undefined) updates.isFullscreen = String(body.isFullscreen);
+
+      // Use Math.max so out-of-order requests (e.g. heartbeat arriving after
+      // "end") never overwrite a higher value with a smaller one.
+      if (body.duration !== undefined) {
+        const newDur = Number(body.duration) || 0;
+        const curDur = Number(existing.duration) || 0;
+        updates.duration = Math.max(newDur, curDur);
+      }
+      if (body.clicks !== undefined) {
+        const newClicks = Number(body.clicks) || 0;
+        const curClicks = Number(existing.clicks) || 0;
+        updates.clicks = Math.max(newClicks, curClicks);
+      }
+      if (body.isFullscreen !== undefined) {
+        updates.isFullscreen = String(body.isFullscreen);
+        // hadFullscreen is a latch: once "true" it never goes back to "false"
+        if (body.isFullscreen === true || body.isFullscreen === "true") {
+          updates.hadFullscreen = "true";
+        }
+      }
       if (body.isHidden !== undefined) {
         updates.isHidden = String(body.isHidden);
-        // hiddenCount is now derived exclusively from /track/events (page_hidden
+        // hiddenCount is derived exclusively from /track/events (page_hidden
         // events in the timeline batch). Do NOT increment it here — the two
         // endpoints are independent fetches and can arrive out of order or one
         // can fail, causing the counter and timeline to diverge.
@@ -855,7 +873,9 @@ app.post("/track/events", async (req, res) => {
     // shows, since both come from the same /track/events payload.
     const hiddenIncrements = events.filter(ev => ev.type === "page_hidden").length;
     if (hiddenIncrements > 0) {
-      await redis.hincrby(keySession(sessionId), "hiddenCount", hiddenIncrements);
+      const newCount = await redis.hincrby(keySession(sessionId), "hiddenCount", hiddenIncrements);
+      // Push the updated count to admin so the table column refreshes immediately
+      broadcastSSE("update", { id: sessionId, hiddenCount: String(newCount) });
     }
 
     broadcastSSE("events", { sessionId, events });
