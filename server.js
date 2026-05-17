@@ -99,6 +99,7 @@ const ORIGIN_GROUPS = {
   },
 };
 
+
 function lookupOrigin(origin) {
   for (const [group, entries] of Object.entries(ORIGIN_GROUPS)) {
     if (entries[origin]) return { group, ...entries[origin] };
