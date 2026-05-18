@@ -1218,8 +1218,8 @@ app.get("/admin/funnel", async (req, res) => {
 // ─── end Funnel ───────────────────────────────────────────────────
 
 // ─── IP enrichment ────────────────────────────────────────────────
-// Proxies ipwhois.io and caches results in Redis for 24 h.
-// Set IPWHOIS_API_KEY in your .env — the key never leaves the server.
+// Proxies ipapi.is and caches results in Redis for 24 h.
+// Set IPAPI_IS_KEY in Render environment variables.
 app.get("/admin/ip-info/:ip", async (req, res) => {
   const { ip } = req.params;
   const cacheKey = `ipinfo:${ip}`;
@@ -1227,41 +1227,52 @@ app.get("/admin/ip-info/:ip", async (req, res) => {
     const cached = await redis.get(cacheKey);
     if (cached) return res.json(JSON.parse(cached));
 
-    const apiKey = process.env.IPWHOIS_API_KEY;
-    if (!apiKey) return res.status(503).json({ error: "IPWHOIS_API_KEY not set in .env" });
+    const apiKey = process.env.IPAPI_IS_KEY;
+    if (!apiKey) return res.status(503).json({ error: "IPAPI_IS_KEY not set in Render environment" });
 
-    const r = await fetch(`https://ipwhois.app/json/${encodeURIComponent(ip)}?apiKey=${apiKey}`);
-    if (!r.ok) return res.status(502).json({ error: `ipwhois returned ${r.status}` });
+    const r = await fetch(`https://api.ipapi.is/?q=${encodeURIComponent(ip)}&key=${apiKey}`);
+    if (!r.ok) return res.status(502).json({ error: `ipapi.is returned ${r.status}` });
     const data = await r.json();
 
-    if (!data.success) return res.status(400).json({ error: data.message || "lookup failed" });
+    if (data.error) return res.status(400).json({ error: data.error });
 
-    const conn = data.connection || {};
-    const sec  = data.security  || {};
+    const loc     = data.location || {};
+    const asn     = data.asn      || {};
+    const company = data.company  || {};
 
-    // Log raw fields once so you can verify in Render logs what the API returns
-    console.log("[ip-info]", ip, JSON.stringify({ connection: conn, security: sec, connection_type: data.connection_type, type: data.type }));
+    const is_proxy      = !!data.is_proxy;
+    const is_vpn        = !!data.is_vpn;
+    const is_tor        = !!data.is_tor;
+    const is_datacenter = !!data.is_datacenter;
+    const is_mobile     = !!data.is_mobile;
 
-    const is_proxy     = !!(sec.proxy);
-    const is_vpn       = !!(sec.vpn);
-    const is_tor       = !!(sec.tor);
-    const is_datacenter= !!(sec.datacenter || sec.hosting);
-
-    // ipwhois.app does not return a connection_type field.
-    // When all security flags are clean we infer "Residential".
-    const raw_type = data.connection_type || conn.type || "";
-    const inferred = (!is_proxy && !is_vpn && !is_tor && !is_datacenter) ? "Residential" : "";
-    const connection_type = raw_type || inferred;
+    // Derive a human-readable connection type from ipapi.is fields
+    let connection_type;
+    if      (is_tor)         connection_type = "Tor";
+    else if (is_vpn)         connection_type = "VPN";
+    else if (is_proxy)       connection_type = "Proxy";
+    else if (is_datacenter)  connection_type = "Datacenter";
+    else if (is_mobile)      connection_type = "Mobile";
+    else {
+      const t = (asn.type || company.type || "").toLowerCase();
+      if      (t === "isp")        connection_type = "Residential";
+      else if (t === "hosting")    connection_type = "Datacenter";
+      else if (t === "education")  connection_type = "Education";
+      else if (t === "government") connection_type = "Government";
+      else if (t === "business")   connection_type = "Business";
+      else if (t === "banking")    connection_type = "Banking";
+      else                         connection_type = "Residential"; // safe default for clean IPs
+    }
 
     const result = {
       ip,
-      country:      data.country      || "",
-      country_code: data.country_code || "",
-      city:         data.city         || "",
-      region:       data.region       || "",
-      isp:          conn.isp  || data.isp  || "",
-      org:          conn.org  || data.org  || "",
-      asn:          conn.asn  || data.asn  || "",
+      country:         loc.country || asn.country || "",
+      country_code:    loc.country || asn.country || "",
+      city:            loc.city    || "",
+      region:          loc.region  || "",
+      isp:             asn.org     || company.name || "",
+      org:             asn.org     || company.name || "",
+      asn:             asn.asn     ? String(asn.asn) : "",
       connection_type,
       is_proxy,
       is_vpn,
@@ -1269,7 +1280,7 @@ app.get("/admin/ip-info/:ip", async (req, res) => {
       is_datacenter,
     };
 
-    // Cache 24 h — IPs don't change classification often
+    // Cache 24 h — IP classifications rarely change
     await redis.setex(cacheKey, 24 * 3600, JSON.stringify(result));
     res.json(result);
   } catch (err) {
