@@ -95,7 +95,7 @@ const ORIGIN_GROUPS = {
     "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://ziyan-os3.vercel.app" },
   },
   aomine: {
-    "https://classy-daffodil-ad4c44.netlify.app": { method: "redirect", target: "https://main.d3db1iaza9pqmd.amplifyapp.com" },
+    "https://classy-daffodil-ad4c44.netlify.app": { method: "s3ap", target: "https://main.d3db1iaza9pqmd.amplifyapp.com" },
   },
 };
 
