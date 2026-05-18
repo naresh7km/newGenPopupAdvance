@@ -1014,11 +1014,20 @@ function sessionMatchesSite(s, site) {
          (s.url    || "").toLowerCase().includes(q);
 }
 
+function extractDomain(str) {
+  if (!str) return "";
+  try {
+    const url = /^https?:\/\//.test(str) ? str : "https://" + str;
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch (_) { return ""; }
+}
+
 // GET /admin/funnel?site1=&site2=&from=&to=&maxHours=&requireOrder=true
+// site2 is optional — omit it for multi-destination discovery mode
 app.get("/admin/funnel", async (req, res) => {
   try {
     const { site1, site2, from, to, maxHours, requireOrder = "true" } = req.query;
-    if (!site1 || !site2) return res.status(400).json({ error: "site1 and site2 required" });
+    if (!site1) return res.status(400).json({ error: "site1 required" });
 
     const { minScore, maxScore } = getScoreRange(from, to);
     const ids = await redis.zrevrangebyscore(KEY_ANALYTICS, maxScore, minScore, "LIMIT", 0, ANALYTICS_MAX);
@@ -1028,18 +1037,115 @@ app.get("/admin/funnel", async (req, res) => {
     const rawResults = await pipeline.exec();
     const sessions = rawResults.map(([, s]) => s).filter(s => s && s.id);
 
-    // Group sessions by site, keyed by IP
-    const s1Map = {};  // ip → [session, ...]
-    const s2Map = {};
-
+    // Always build s1Map
+    const s1Map = {};
     for (const s of sessions) {
       const ip = s.ip;
       if (!ip || ip === "unknown") continue;
       if (sessionMatchesSite(s, site1)) { (s1Map[ip] = s1Map[ip] || []).push(s); }
-      if (sessionMatchesSite(s, site2)) { (s2Map[ip] = s2Map[ip] || []).push(s); }
+    }
+    const s1IPs = new Set(Object.keys(s1Map));
+
+    // ── Multi-destination mode (no site2 specified) ────────────────────
+    if (!site2) {
+      // For each site1 IP, find all sessions NOT on site1, group by domain
+      const otherByIP = {};
+      for (const s of sessions) {
+        const ip = s.ip;
+        if (!ip || !s1IPs.has(ip) || sessionMatchesSite(s, site1)) continue;
+        (otherByIP[ip] = otherByIP[ip] || []).push(s);
+      }
+
+      const destMap = {}; // domain → { ips: Set, users: [] }
+      for (const ip of s1IPs) {
+        const sorted1 = (s1Map[ip] || []).slice().sort((a, b) => Number(a.startTime) - Number(b.startTime));
+        const first1  = sorted1[0];
+        const others  = (otherByIP[ip] || []).slice().sort((a, b) => Number(a.startTime) - Number(b.startTime));
+        const seenDomains = new Set();
+
+        for (const s of others) {
+          const domain = extractDomain(s.origin || s.url || "");
+          if (!domain || seenDomains.has(domain)) continue;
+          if (requireOrder === "true" && Number(s.startTime) <= Number(first1.startTime)) continue;
+          const ttc = Math.round((Number(s.startTime) - Number(first1.startTime)) / 1000);
+          if (maxHours && ttc > Number(maxHours) * 3600) continue;
+
+          seenDomains.add(domain);
+          if (!destMap[domain]) destMap[domain] = { ips: new Set(), users: [] };
+          if (!destMap[domain].ips.has(ip)) {
+            destMap[domain].ips.add(ip);
+            destMap[domain].users.push({
+              ip,
+              site1Session: first1,
+              site2Session: s,
+              timeToConvert: ttc,
+              gclid:    (first1.gclid || s.gclid || "").trim(),
+              timezone: first1.timezone || s.timezone || "",
+              site2: domain,
+            });
+          }
+        }
+      }
+
+      // Build destinations summary (sorted by conversions desc)
+      const destinations = Object.entries(destMap)
+        .map(([site, { ips, users }]) => {
+          const t = users.filter(u => u.timeToConvert > 0).map(u => u.timeToConvert).sort((a, b) => a - b);
+          return {
+            site,
+            converted:        ips.size,
+            conversionRate:   (ips.size / s1IPs.size * 100).toFixed(1),
+            avgTimeToConvert: t.length ? Math.round(t.reduce((a, b) => a + b, 0) / t.length) : 0,
+            withGclid:        users.filter(u => u.gclid).length,
+          };
+        })
+        .sort((a, b) => b.converted - a.converted);
+
+      // Flat user list — one entry per IP (earliest destination wins)
+      const seenIPs = new Set();
+      const allUsers = [];
+      for (const { users } of Object.values(destMap)) {
+        for (const u of users) {
+          if (!seenIPs.has(u.ip)) { seenIPs.add(u.ip); allUsers.push(u); }
+        }
+      }
+      allUsers.sort((a, b) => Number(b.site1Session.startTime) - Number(a.site1Session.startTime));
+
+      const convertedIPs = seenIPs;
+      const nonConverted = [];
+      for (const ip of s1IPs) {
+        if (convertedIPs.has(ip)) continue;
+        const best = s1Map[ip].slice().sort((a, b) => Number(b.startTime) - Number(a.startTime))[0];
+        nonConverted.push({ ip, session: best, gclid: (best.gclid || "").trim(), timezone: best.timezone || "", visitedSite2: false });
+      }
+      nonConverted.sort((a, b) => Number(b.session.startTime) - Number(a.session.startTime));
+
+      const times   = allUsers.filter(u => u.timeToConvert > 0).map(u => u.timeToConvert).sort((a, b) => a - b);
+      const avgTime = times.length ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : 0;
+      const medTime = times.length ? times[Math.floor(times.length / 2)] : 0;
+
+      return res.json({
+        multiDestination: true,
+        site1: { total: sessions.filter(s => sessionMatchesSite(s, site1)).length, uniqueIPs: s1IPs.size },
+        site2: { total: 0, uniqueIPs: destinations.length },
+        destinations,
+        converted:           convertedIPs.size,
+        conversionRate:      s1IPs.size > 0 ? ((convertedIPs.size / s1IPs.size) * 100).toFixed(1) : "0.0",
+        avgTimeToConvert:    avgTime,
+        medianTimeToConvert: medTime,
+        withGclid:           allUsers.filter(u => u.gclid).length,
+        users:               allUsers,
+        nonConverted,
+      });
     }
 
-    const s1IPs = new Set(Object.keys(s1Map));
+    // ── Single-destination mode (site2 specified) ──────────────────────
+    const s2Map = {};
+    for (const s of sessions) {
+      const ip = s.ip;
+      if (!ip || ip === "unknown") continue;
+      if (sessionMatchesSite(s, site2)) { (s2Map[ip] = s2Map[ip] || []).push(s); }
+    }
     const s2IPs = new Set(Object.keys(s2Map));
 
     // Build conversion list
@@ -1072,41 +1178,30 @@ app.get("/admin/funnel", async (req, res) => {
       });
     }
 
-    // Sort newest first
     users.sort((a, b) => Number(b.site1Session.startTime) - Number(a.site1Session.startTime));
 
-    // Non-converted: visited site1 but not counted as converted
     const convertedIPs = new Set(users.map(u => u.ip));
     const nonConverted = [];
     for (const ip of s1IPs) {
       if (convertedIPs.has(ip)) continue;
-      // Pick the most recent site1 session for this IP
       const best = s1Map[ip].sort((a, b) => Number(b.startTime) - Number(a.startTime))[0];
       nonConverted.push({
         ip,
         session:  best,
         gclid:    (best.gclid || "").trim(),
         timezone: best.timezone || "",
-        // Flag: did they visit site2 at all (but failed order/window)?
         visitedSite2: !!s2Map[ip],
       });
     }
     nonConverted.sort((a, b) => Number(b.session.startTime) - Number(a.session.startTime));
 
-    // Aggregate metrics
     const times   = users.filter(u => u.timeToConvert > 0).map(u => u.timeToConvert).sort((a, b) => a - b);
     const avgTime = times.length ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : 0;
     const medTime = times.length ? times[Math.floor(times.length / 2)] : 0;
 
     res.json({
-      site1: {
-        total:     sessions.filter(s => sessionMatchesSite(s, site1)).length,
-        uniqueIPs: s1IPs.size,
-      },
-      site2: {
-        total:     sessions.filter(s => sessionMatchesSite(s, site2)).length,
-        uniqueIPs: s2IPs.size,
-      },
+      site1: { total: sessions.filter(s => sessionMatchesSite(s, site1)).length, uniqueIPs: s1IPs.size },
+      site2: { total: sessions.filter(s => sessionMatchesSite(s, site2)).length, uniqueIPs: s2IPs.size },
       converted:            users.length,
       conversionRate:       s1IPs.size > 0 ? ((users.length / s1IPs.size) * 100).toFixed(1) : "0.0",
       avgTimeToConvert:     avgTime,
@@ -1154,7 +1249,7 @@ app.get("/admin/ip-info/:ip", async (req, res) => {
       org:          conn.org  || data.org  || "",
       asn:          conn.asn  || data.asn  || "",
       // "Residential" | "Corporate" | "Datacenter/Hosting/Transit" | "Education" | "Mobile"
-      connection_type: conn.type || "",
+      connection_type: data.connection_type || conn.type || "",
       is_proxy:     !!(sec.proxy),
       is_vpn:       !!(sec.vpn),
       is_tor:       !!(sec.tor),
