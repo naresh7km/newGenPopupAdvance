@@ -1239,6 +1239,20 @@ app.get("/admin/ip-info/:ip", async (req, res) => {
     const conn = data.connection || {};
     const sec  = data.security  || {};
 
+    // Log raw fields once so you can verify in Render logs what the API returns
+    console.log("[ip-info]", ip, JSON.stringify({ connection: conn, security: sec, connection_type: data.connection_type, type: data.type }));
+
+    const is_proxy     = !!(sec.proxy);
+    const is_vpn       = !!(sec.vpn);
+    const is_tor       = !!(sec.tor);
+    const is_datacenter= !!(sec.datacenter || sec.hosting);
+
+    // ipwhois.app does not return a connection_type field.
+    // When all security flags are clean we infer "Residential".
+    const raw_type = data.connection_type || conn.type || "";
+    const inferred = (!is_proxy && !is_vpn && !is_tor && !is_datacenter) ? "Residential" : "";
+    const connection_type = raw_type || inferred;
+
     const result = {
       ip,
       country:      data.country      || "",
@@ -1248,17 +1262,27 @@ app.get("/admin/ip-info/:ip", async (req, res) => {
       isp:          conn.isp  || data.isp  || "",
       org:          conn.org  || data.org  || "",
       asn:          conn.asn  || data.asn  || "",
-      // "Residential" | "Corporate" | "Datacenter/Hosting/Transit" | "Education" | "Mobile"
-      connection_type: data.connection_type || conn.type || "",
-      is_proxy:     !!(sec.proxy),
-      is_vpn:       !!(sec.vpn),
-      is_tor:       !!(sec.tor),
-      is_datacenter:!!(sec.datacenter || sec.hosting),
+      connection_type,
+      is_proxy,
+      is_vpn,
+      is_tor,
+      is_datacenter,
     };
 
     // Cache 24 h — IPs don't change classification often
     await redis.setex(cacheKey, 24 * 3600, JSON.stringify(result));
     res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Flush all cached ipinfo entries so they get re-fetched with the new logic
+app.delete("/admin/ip-info-cache", async (req, res) => {
+  try {
+    const keys = await redis.keys("ipinfo:*");
+    if (keys.length) await redis.del(...keys);
+    res.json({ deleted: keys.length });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
