@@ -1075,6 +1075,24 @@ app.get("/admin/funnel", async (req, res) => {
     // Sort newest first
     users.sort((a, b) => Number(b.site1Session.startTime) - Number(a.site1Session.startTime));
 
+    // Non-converted: visited site1 but not counted as converted
+    const convertedIPs = new Set(users.map(u => u.ip));
+    const nonConverted = [];
+    for (const ip of s1IPs) {
+      if (convertedIPs.has(ip)) continue;
+      // Pick the most recent site1 session for this IP
+      const best = s1Map[ip].sort((a, b) => Number(b.startTime) - Number(a.startTime))[0];
+      nonConverted.push({
+        ip,
+        session:  best,
+        gclid:    (best.gclid || "").trim(),
+        timezone: best.timezone || "",
+        // Flag: did they visit site2 at all (but failed order/window)?
+        visitedSite2: !!s2Map[ip],
+      });
+    }
+    nonConverted.sort((a, b) => Number(b.session.startTime) - Number(a.session.startTime));
+
     // Aggregate metrics
     const times   = users.filter(u => u.timeToConvert > 0).map(u => u.timeToConvert).sort((a, b) => a - b);
     const avgTime = times.length ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : 0;
@@ -1095,6 +1113,7 @@ app.get("/admin/funnel", async (req, res) => {
       medianTimeToConvert:  medTime,
       withGclid:            users.filter(u => u.gclid).length,
       users,
+      nonConverted,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1102,6 +1121,55 @@ app.get("/admin/funnel", async (req, res) => {
 });
 
 // ─── end Funnel ───────────────────────────────────────────────────
+
+// ─── IP enrichment ────────────────────────────────────────────────
+// Proxies ipwhois.io and caches results in Redis for 24 h.
+// Set IPWHOIS_API_KEY in your .env — the key never leaves the server.
+app.get("/admin/ip-info/:ip", async (req, res) => {
+  const { ip } = req.params;
+  const cacheKey = `ipinfo:${ip}`;
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.json(JSON.parse(cached));
+
+    const apiKey = process.env.IPWHOIS_API_KEY;
+    if (!apiKey) return res.status(503).json({ error: "IPWHOIS_API_KEY not set in .env" });
+
+    const r = await fetch(`https://ipwhois.app/json/${encodeURIComponent(ip)}?apiKey=${apiKey}`);
+    if (!r.ok) return res.status(502).json({ error: `ipwhois returned ${r.status}` });
+    const data = await r.json();
+
+    if (!data.success) return res.status(400).json({ error: data.message || "lookup failed" });
+
+    const conn = data.connection || {};
+    const sec  = data.security  || {};
+
+    const result = {
+      ip,
+      country:      data.country      || "",
+      country_code: data.country_code || "",
+      city:         data.city         || "",
+      region:       data.region       || "",
+      isp:          conn.isp  || data.isp  || "",
+      org:          conn.org  || data.org  || "",
+      asn:          conn.asn  || data.asn  || "",
+      // "Residential" | "Corporate" | "Datacenter/Hosting/Transit" | "Education" | "Mobile"
+      connection_type: conn.type || "",
+      is_proxy:     !!(sec.proxy),
+      is_vpn:       !!(sec.vpn),
+      is_tor:       !!(sec.tor),
+      is_datacenter:!!(sec.datacenter || sec.hosting),
+    };
+
+    // Cache 24 h — IPs don't change classification often
+    await redis.setex(cacheKey, 24 * 3600, JSON.stringify(result));
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── end IP enrichment ────────────────────────────────────────────
 
 app.get("/admin/stream", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
