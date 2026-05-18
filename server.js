@@ -981,6 +981,128 @@ app.get("/admin/analytics/stats", async (req, res) => {
   }
 });
 
+// ─── Funnel ───────────────────────────────────────────────────────
+
+// Returns every unique origin + URL hostname seen across all sessions,
+// used to populate the site autocomplete inputs on funnel.html.
+app.get("/admin/funnel/sites", async (req, res) => {
+  try {
+    const ids = await redis.zrevrange(KEY_ANALYTICS, 0, ANALYTICS_MAX - 1);
+    const pipeline = redis.pipeline();
+    for (const id of ids) pipeline.hmget(keySession(id), "origin", "url");
+    const results = await pipeline.exec();
+
+    const sites = new Set();
+    for (const [, fields] of results) {
+      if (!fields) continue;
+      const [origin, url] = fields;
+      if (origin && origin.trim()) sites.add(origin.trim());
+      if (url) {
+        try { const h = new URL(url).hostname; if (h) sites.add(h); } catch {}
+      }
+    }
+    res.json({ sites: [...sites].sort() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Match a session to a site string (flexible: origin or URL contains the value)
+function sessionMatchesSite(s, site) {
+  const q = site.toLowerCase();
+  return (s.origin || "").toLowerCase().includes(q) ||
+         (s.url    || "").toLowerCase().includes(q);
+}
+
+// GET /admin/funnel?site1=&site2=&from=&to=&maxHours=&requireOrder=true
+app.get("/admin/funnel", async (req, res) => {
+  try {
+    const { site1, site2, from, to, maxHours, requireOrder = "true" } = req.query;
+    if (!site1 || !site2) return res.status(400).json({ error: "site1 and site2 required" });
+
+    const { minScore, maxScore } = getScoreRange(from, to);
+    const ids = await redis.zrevrangebyscore(KEY_ANALYTICS, maxScore, minScore, "LIMIT", 0, ANALYTICS_MAX);
+
+    const pipeline = redis.pipeline();
+    for (const id of ids) pipeline.hgetall(keySession(id));
+    const rawResults = await pipeline.exec();
+    const sessions = rawResults.map(([, s]) => s).filter(s => s && s.id);
+
+    // Group sessions by site, keyed by IP
+    const s1Map = {};  // ip → [session, ...]
+    const s2Map = {};
+
+    for (const s of sessions) {
+      const ip = s.ip;
+      if (!ip || ip === "unknown") continue;
+      if (sessionMatchesSite(s, site1)) { (s1Map[ip] = s1Map[ip] || []).push(s); }
+      if (sessionMatchesSite(s, site2)) { (s2Map[ip] = s2Map[ip] || []).push(s); }
+    }
+
+    const s1IPs = new Set(Object.keys(s1Map));
+    const s2IPs = new Set(Object.keys(s2Map));
+
+    // Build conversion list
+    const users = [];
+    for (const ip of s1IPs) {
+      if (!s2Map[ip]) continue;
+
+      const sorted1 = s1Map[ip].sort((a, b) => Number(a.startTime) - Number(b.startTime));
+      const sorted2 = s2Map[ip].sort((a, b) => Number(a.startTime) - Number(b.startTime));
+      const first1  = sorted1[0];
+
+      let first2;
+      if (requireOrder === "true") {
+        first2 = sorted2.find(s => Number(s.startTime) > Number(first1.startTime));
+      } else {
+        first2 = sorted2[0];
+      }
+      if (!first2) continue;
+
+      const timeToConvert = Math.round((Number(first2.startTime) - Number(first1.startTime)) / 1000);
+      if (maxHours && timeToConvert > Number(maxHours) * 3600) continue;
+
+      users.push({
+        ip,
+        site1Session:   first1,
+        site2Session:   first2,
+        timeToConvert,
+        gclid:    (first1.gclid || first2.gclid || "").trim(),
+        timezone: first1.timezone || first2.timezone || "",
+      });
+    }
+
+    // Sort newest first
+    users.sort((a, b) => Number(b.site1Session.startTime) - Number(a.site1Session.startTime));
+
+    // Aggregate metrics
+    const times   = users.filter(u => u.timeToConvert > 0).map(u => u.timeToConvert).sort((a, b) => a - b);
+    const avgTime = times.length ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : 0;
+    const medTime = times.length ? times[Math.floor(times.length / 2)] : 0;
+
+    res.json({
+      site1: {
+        total:     sessions.filter(s => sessionMatchesSite(s, site1)).length,
+        uniqueIPs: s1IPs.size,
+      },
+      site2: {
+        total:     sessions.filter(s => sessionMatchesSite(s, site2)).length,
+        uniqueIPs: s2IPs.size,
+      },
+      converted:            users.length,
+      conversionRate:       s1IPs.size > 0 ? ((users.length / s1IPs.size) * 100).toFixed(1) : "0.0",
+      avgTimeToConvert:     avgTime,
+      medianTimeToConvert:  medTime,
+      withGclid:            users.filter(u => u.gclid).length,
+      users,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── end Funnel ───────────────────────────────────────────────────
+
 app.get("/admin/stream", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
