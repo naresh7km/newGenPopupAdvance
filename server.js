@@ -742,13 +742,13 @@ app.post("/admin/reset", async (req, res) => {
 
 // ─── Analytics ────────────────────────────────────────────────────
 
-const KEY_ANALYTICS        = "analytics:sessions";
-const ANALYTICS_MAX        = 500;
+const KEY_ANALYTICS         = "analytics:sessions";
+const ANALYTICS_MAX         = 3000;
 const ANALYTICS_SESSION_TTL = 48 * 3600;
 
 const keySession       = (id) => `analytics:session:${id}`;
 const keySessionEvents = (id) => `analytics:session:${id}:events`;
-const MAX_TIMELINE_EVENTS = 500;
+const MAX_TIMELINE_EVENTS = 2000;
 
 const sseClients = new Set();
 
@@ -790,15 +790,18 @@ app.post("/track", async (req, res) => {
         url:         body.url         || "",
         referrer:    body.referrer    || "",
         language:    body.language    || "",
-        screenWidth: body.screenWidth || 0,
-        screenHeight:body.screenHeight|| 0,
-        startTime:   now,
-        lastSeen:    now,
-        duration:    0,
-        clicks:      0,
-        isFullscreen:"false",
-        isHidden:    "false",
-        hiddenCount: 0,
+        screenWidth:    body.screenWidth    || 0,
+        screenHeight:   body.screenHeight   || 0,
+        viewportWidth:  body.viewportWidth  || 0,
+        viewportHeight: body.viewportHeight || 0,
+        startTime:    now,
+        lastSeen:     now,
+        duration:     0,
+        clicks:       0,
+        isFullscreen: "false",
+        hadFullscreen:"false",
+        isHidden:     "false",
+        hiddenCount:  0,
       };
       const tx = redis.multi();
       tx.hmset(sKey, session);
@@ -809,14 +812,23 @@ app.post("/track", async (req, res) => {
       broadcastSSE("session", session);
     } else {
       const updates = { lastSeen: now, event };
-      if (body.duration    !== undefined) updates.duration    = Number(body.duration)    || 0;
-      if (body.clicks      !== undefined) updates.clicks      = Number(body.clicks)      || 0;
-      if (body.isFullscreen!== undefined) updates.isFullscreen = String(body.isFullscreen);
-      if (body.isHidden    !== undefined) {
-        updates.isHidden = String(body.isHidden);
-        if (body.isHidden === true || body.isHidden === "true") {
-          updates.hiddenCount = (parseInt(existing.hiddenCount, 10) || 0) + 1;
+      if (body.duration       !== undefined) updates.duration    = Number(body.duration)    || 0;
+      if (body.clicks         !== undefined) updates.clicks      = Number(body.clicks)      || 0;
+      if (body.viewportWidth  !== undefined) updates.viewportWidth  = Number(body.viewportWidth)  || 0;
+      if (body.viewportHeight !== undefined) updates.viewportHeight = Number(body.viewportHeight) || 0;
+      if (body.isFullscreen   !== undefined) {
+        updates.isFullscreen = String(body.isFullscreen);
+        // Latch: once true, hadFullscreen stays true forever so the table can
+        // show "Yes" even after the user exits fullscreen.
+        if (body.isFullscreen === true || body.isFullscreen === "true") {
+          updates.hadFullscreen = "true";
         }
+      }
+      if (body.isHidden !== undefined) {
+        updates.isHidden = String(body.isHidden);
+        // hiddenCount is derived exclusively from /track/events (page_hidden
+        // events in the timeline batch). Do NOT increment here — the two
+        // endpoints are independent fetches and can diverge on tab close.
       }
       if (body.timezone) updates.timezone = body.timezone;
       if (body.gclid)    updates.gclid    = body.gclid;
@@ -849,6 +861,13 @@ app.post("/track/events", async (req, res) => {
     tx.ltrim(eKey, -MAX_TIMELINE_EVENTS, -1);
     tx.expire(eKey, ANALYTICS_SESSION_TTL);
     await tx.exec();
+
+    // Derive hiddenCount exclusively from page_hidden events in this batch
+    // so the counter always matches the timeline.
+    const hiddenIncrements = events.filter(ev => ev.type === "page_hidden").length;
+    if (hiddenIncrements > 0) {
+      await redis.hincrby(keySession(sessionId), "hiddenCount", hiddenIncrements);
+    }
 
     broadcastSSE("events", { sessionId, events });
     res.status(200).json({ ok: true });
@@ -892,15 +911,71 @@ app.post("/admin/analytics/clear-stale", async (req, res) => {
   }
 });
 
+// Convert client-local date timestamps to Redis score range
+function getScoreRange(from, to) {
+  const minScore = from ? Number(from) : "-inf";
+  const maxScore = to   ? Number(to)   : "+inf";
+  return { minScore, maxScore };
+}
+
 app.get("/admin/analytics", async (req, res) => {
   try {
-    const ids = await redis.zrevrange(KEY_ANALYTICS, 0, ANALYTICS_MAX - 1);
-    const sessions = [];
-    for (const id of ids) {
-      const s = await redis.hgetall(keySession(id));
-      if (s && s.id) sessions.push(s);
+    const { from, to, page = "1", pageSize = "50" } = req.query;
+    const { minScore, maxScore } = getScoreRange(from, to);
+    const limit  = Math.min(Number(pageSize), 100);
+    const offset = (Number(page) - 1) * limit;
+
+    const [ids, total] = await Promise.all([
+      redis.zrevrangebyscore(KEY_ANALYTICS, maxScore, minScore, "LIMIT", offset, limit),
+      redis.zcount(KEY_ANALYTICS, minScore, maxScore),
+    ]);
+
+    // Batch all hgetall in one round-trip
+    const pipeline = redis.pipeline();
+    for (const id of ids) pipeline.hgetall(keySession(id));
+    const results = await pipeline.exec();
+
+    const sessions = results
+      .map(([, s]) => s)
+      .filter((s) => s && s.id);
+
+    res.json({ sessions, total, page: Number(page), pageSize: limit });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/admin/analytics/stats", async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    const { minScore, maxScore } = getScoreRange(from, to);
+
+    const [total, ids] = await Promise.all([
+      redis.zcount(KEY_ANALYTICS, minScore, maxScore),
+      redis.zrevrangebyscore(KEY_ANALYTICS, maxScore, minScore, "LIMIT", 0, 1000),
+    ]);
+
+    const pipeline = redis.pipeline();
+    for (const id of ids) pipeline.hgetall(keySession(id));
+    const results = await pipeline.exec();
+
+    let withGclid = 0, totalClicks = 0, totalDuration = 0, durCount = 0, active = 0;
+    const now = Date.now();
+    for (const [, s] of results) {
+      if (!s || !s.id) continue;
+      if ((s.gclid || "").trim()) withGclid++;
+      totalClicks += Number(s.clicks) || 0;
+      if (Number(s.duration) > 0) { totalDuration += Number(s.duration); durCount++; }
+      if (now - Number(s.lastSeen) < 30 * 1000) active++;
     }
-    res.json({ sessions, total: sessions.length });
+
+    res.json({
+      total,
+      active,
+      withGclid,
+      totalClicks,
+      avgDuration: durCount ? Math.round(totalDuration / durCount) : 0,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
