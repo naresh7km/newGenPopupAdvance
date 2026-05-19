@@ -959,20 +959,27 @@ app.get("/admin/analytics/stats", async (req, res) => {
     for (const id of ids) pipeline.hgetall(keySession(id));
     const results = await pipeline.exec();
 
-    let withGclid = 0, totalClicks = 0, totalDuration = 0, durCount = 0, active = 0;
+    let withGclid = 0, totalClicks = 0, totalDuration = 0, durCount = 0;
+    const uniqueIPs = new Set();
+    const activeIPs = new Set();
+    const gclidIPs  = new Set();
     const now = Date.now();
     for (const [, s] of results) {
       if (!s || !s.id) continue;
-      if ((s.gclid || "").trim()) withGclid++;
+      const ip = s.ip || "unknown";
+      uniqueIPs.add(ip);
+      if (now - Number(s.lastSeen) < 45 * 1000) activeIPs.add(ip);
+      if ((s.gclid || "").trim()) { withGclid++; gclidIPs.add(ip); }
       totalClicks += Number(s.clicks) || 0;
       if (Number(s.duration) > 0) { totalDuration += Number(s.duration); durCount++; }
-      if (now - Number(s.lastSeen) < 30 * 1000) active++;
     }
 
     res.json({
-      total,
-      active,
+      total,                          // raw session count (kept for reference)
+      uniqueIPs:   uniqueIPs.size,    // unique visitor IPs
+      active:      activeIPs.size,    // unique IPs active in last 45 s
       withGclid,
+      gclidIPs:    gclidIPs.size,     // unique IPs that had a GCLID
       totalClicks,
       avgDuration: durCount ? Math.round(totalDuration / durCount) : 0,
     });
