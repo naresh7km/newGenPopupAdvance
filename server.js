@@ -95,7 +95,7 @@ const ORIGIN_GROUPS = {
     "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://ziyan-os3.vercel.app" },
   },
   aomine: {
-    "https://venerable-fenglisu-db94d4.netlify.app/": { method: "redirect", target: "https://main.d14wptkj8tb0he.amplifyapp.com/?gad_campaign=210687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
+    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://main.d14wptkj8tb0he.amplifyapp.com/?gad_campaign=210687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
   },
 };
 
