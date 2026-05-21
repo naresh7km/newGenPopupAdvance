@@ -651,6 +651,7 @@ app.post("/timezone", async (req, res) => {
 });
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
+app.get("/getImage", (_req, res) => res.sendFile(path.join(__dirname, "prank.webp")));
 
 app.get("/status", async (_req, res) => {
   try {
