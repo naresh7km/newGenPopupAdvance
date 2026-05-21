@@ -802,6 +802,7 @@ app.post("/track", async (req, res) => {
         hadFullscreen:"false",
         isHidden:     "false",
         hiddenCount:  0,
+        escCount:     0,
       };
       const tx = redis.multi();
       tx.hmset(sKey, session);
@@ -867,6 +868,12 @@ app.post("/track/events", async (req, res) => {
     const hiddenIncrements = events.filter(ev => ev.type === "page_hidden").length;
     if (hiddenIncrements > 0) {
       await redis.hincrby(keySession(sessionId), "hiddenCount", hiddenIncrements);
+    }
+
+    // Count ESC key presses from key events in this batch.
+    const escIncrements = events.filter(ev => ev.type === "key" && (ev.data || {}).key === "Escape").length;
+    if (escIncrements > 0) {
+      await redis.hincrby(keySession(sessionId), "escCount", escIncrements);
     }
 
     broadcastSSE("events", { sessionId, events });
