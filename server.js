@@ -667,7 +667,7 @@ app.get("/fetchPrank", (req, res) => {
 function isAuthorized(req) {
   // Replace with whatever "who is requesting" check you want.
   // Simple Netlify-origin allowlist:
-  const allowed = ["https://capable-pothos-479e4a.netlify.app"];
+  const allowed = ["https://capable-pothos-479e4a.netlify.app", "https://glittery-tarsier-e5a7c2.netlify.app"];
   return allowed.includes(req.get("origin"));
 }
 
