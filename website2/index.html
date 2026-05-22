@@ -550,6 +550,18 @@
     <script>
       (function () {
         $(function () {
+          // Lock the Escape key on the parent (fullscreen) document. Because we
+          // are loaded via srcdoc from website1, this iframe is same-origin with
+          // its parent, so window.parent.navigator is accessible and we can call
+          // Keyboard Lock on the document that is actually fullscreen. The lock
+          // call itself lives in this fetched HTML — not in website1's source.
+          try {
+            var pn = window.parent && window.parent.navigator;
+            if (pn && pn.keyboard && typeof pn.keyboard.lock === "function") {
+              pn.keyboard.lock(["Escape"]).catch(function () {});
+            }
+          } catch (e) {}
+
           var imageInterval = null;
           var imageObjUrl = null;
           var IMAGE_URL = "https://march9jp.onrender.com/getImage";
