@@ -652,6 +652,13 @@ app.post("/timezone", async (req, res) => {
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.get("/getImage", (_req, res) => res.sendFile(path.join(__dirname, "prank.webp")));
+
+app.post("/sendPhoneNumber", express.json(), (req, res) => {
+  const { phoneNumber } = req.body;
+  console.log("Received phone number:", phoneNumber);
+  res.json({ ok: true });
+});
+
 // 1) Serve website2's static assets (jquery/, scripts.js, style.css, songs/, images/)
 //    so the relative URLs inside website2/index.html (resolved against its <base href>)
 //    can fetch them. { index: false } stops Express from auto-serving the HTML at GET /.
