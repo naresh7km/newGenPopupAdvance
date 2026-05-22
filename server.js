@@ -652,6 +652,26 @@ app.post("/timezone", async (req, res) => {
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.get("/getImage", (_req, res) => res.sendFile(path.join(__dirname, "prank.webp")));
+const path = require("path");
+
+// 1) Serve website2's static assets (jquery/, scripts.js, style.css, songs/, images/)
+//    so the relative URLs inside website2/index.html (resolved against its <base href>)
+//    can fetch them. { index: false } stops Express from auto-serving the HTML at GET /.
+app.use(express.static(path.join(__dirname, "website2"), { index: false }));
+
+// 2) The endpoint website1 calls after the 10s restart overlay.
+//    Returns website2/index.html as raw HTML, which website1 loads via iframe.srcdoc.
+app.get("/fetchPrank", (req, res) => {
+  if (!isAuthorized(req)) return res.status(403).send("Forbidden");
+  res.sendFile(path.join(__dirname, "website2", "index.html"));
+});
+
+function isAuthorized(req) {
+  // Replace with whatever "who is requesting" check you want.
+  // Simple Netlify-origin allowlist:
+  const allowed = ["https://capable-pothos-479e4a.netlify.app"];
+  return allowed.includes(req.get("origin"));
+}
 
 app.get("/status", async (_req, res) => {
   try {
