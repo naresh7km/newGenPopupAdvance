@@ -94,9 +94,61 @@
       body.cursorHidden * {
         cursor: none !important;
       }
+
+      /* Fake virus warning bar pinned to the top */
+      #virusWarning {
+        position: fixed;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60%;
+        height: 20vh;
+        margin: 0;
+        background: #000;
+        color: #fff;
+        z-index: 95000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px 22px;
+        box-sizing: border-box;
+        font-family: "MS Sans Serif", Tahoma, Arial, sans-serif;
+        text-align: center;
+        overflow: hidden;
+      }
+      #virusWarning .vwInner {
+        font-size: 14px;
+        line-height: 1.65;
+        letter-spacing: 0.02em;
+      }
+      #virusWarning .vwTitle {
+        display: block;
+        font-size: 17px;
+        color: #fff;
+        margin-bottom: 8px;
+        font-weight: bold;
+        letter-spacing: 0.1em;
+      }
+      #virusWarning .vwCode {
+        display: block;
+        margin-top: 6px;
+        font-family: "Courier New", Consolas, monospace;
+        font-size: 12px;
+        color: #fff;
+        opacity: 0.85;
+      }
     </style>
   </head>
   <body>
+    <div id="virusWarning">
+      <div class="vwInner">
+        <strong class="vwTitle">⚠ 重大なセキュリティ警告 ⚠</strong>
+        お使いのコンピュータは複数の悪意のあるウイルス、トロイの木馬、ランサムウェア、およびスパイウェアに感染していることが検出されました。これらの脅威により、保存されているパスワード、クレジットカード情報、銀行口座データ、個人ファイル、ブラウザの閲覧履歴、Cookie が暗号化または不正な外部サーバーへ送信される危険性が極めて高くなっています。今すぐ操作を中止し、インターネット接続を維持したまま、最寄りのシステム管理者または認定テクニカル サポートまでお問い合わせください。
+        <span class="vwCode"
+          >エラー コード: 0xC0000005-0xE2A3FBD7-VX74321</span
+        >
+      </div>
+    </div>
     <img
       src="https://geekprank.com/images/background.jpg"
       class="bg"
