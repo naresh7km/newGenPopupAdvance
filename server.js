@@ -85,7 +85,7 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://naotoshidairy.shop": { method: "redirect", target: "https://main.d1viohoybcc6ji.amplifyapp.com" },
+    "https://cute-hotteok-51402d.netlify.app": { method: "redirect", target: "https://main.d1viohoybcc6ji.amplifyapp.com" },
     "https://takahirofarmfood.com": { method: "redirect", target: "https://main.d1viohoybcc6ji.amplifyapp.com" },
     "https://hiroakitravels.com": { method: "redirect", target: "https://main.d1viohoybcc6ji.amplifyapp.com" },
   },
