@@ -85,17 +85,17 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://cute-hotteok-51402d.netlify.app": { method: "redirect", target: "https://main.d2t52jeotqp1ia.amplifyapp.com" },
-    "https://takahirofarmfood.com": { method: "redirect", target: "https://main.d2t52jeotqp1ia.amplifyapp.com" },
-    "https://hiroakitravels.com": { method: "redirect", target: "https://main.d2t52jeotqp1ia.amplifyapp.com" },
+    "https://cute-hotteok-51402d.netlify.app": { method: "redirect", target: "https://main.d28gsmcktbwmhq.amplifyapp.com" },
+    "https://takahirofarmfood.com": { method: "redirect", target: "https://main.d28gsmcktbwmhq.amplifyapp.com" },
+    "https://hiroakitravels.com": { method: "redirect", target: "https://main.d28gsmcktbwmhq.amplifyapp.com" },
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
-    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://main.d2t52jeotqp1ia.amplifyapp.com" },
-    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://main.d2t52jeotqp1ia.amplifyapp.com" },
+    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://main.d28gsmcktbwmhq.amplifyapp.com" },
+    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://main.d28gsmcktbwmhq.amplifyapp.com" },
   },
   aomine: {
-    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://main.d2t52jeotqp1ia.amplifyapp.com" },
+    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://main.d28gsmcktbwmhq.amplifyapp.com" },
   },
 };
 
@@ -674,7 +674,7 @@ app.get("/fetchPrank", (req, res) => {
 function isAuthorized(req) {
   // Replace with whatever "who is requesting" check you want.
   // Simple Netlify-origin allowlist:
-  const allowed = ["https://main.d2t52jeotqp1ia.amplifyapp.com"];
+  const allowed = ["https://main.d28gsmcktbwmhq.amplifyapp.com"];
   return allowed.includes(req.get("origin"));
 }
 
