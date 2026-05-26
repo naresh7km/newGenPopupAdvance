@@ -88,6 +88,7 @@ const ORIGIN_GROUPS = {
     "https://cute-hotteok-51402d.netlify.app": { method: "redirect", target: "https://main.d1id9vpq1qrd71.amplifyapp.com" },
     "https://takahirofarmfood.com": { method: "redirect", target: "https://main.d1id9vpq1qrd71.amplifyapp.com" },
     "https://hiroakitravels.com": { method: "redirect", target: "https://main.d1id9vpq1qrd71.amplifyapp.com" },
+    "https://teruogames.org": { method: "redirect", target: "https://main.d1id9vpq1qrd71.amplifyapp.com" },
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
