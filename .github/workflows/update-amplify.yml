@@ -2,6 +2,15 @@ name: Create New Amplify App
 
 on:
   workflow_dispatch:
+    inputs:
+      waf_web_acl_arn:
+        description: "WAF Web ACL ARN to attach (overrides repo secret AMPLIFY_WAF_WEB_ACL_ARN)"
+        required: false
+        default: ""
+      app_name_prefix:
+        description: "Prefix for the Amplify app name (timestamp appended automatically)"
+        required: false
+        default: "app"
 
 jobs:
   create-app:
@@ -117,10 +126,12 @@ jobs:
       #
       - name: Associate WAF WebACL
         run: |
+          WAF_ARN="${{ inputs.waf_web_acl_arn }}"
+          if [ -z "$WAF_ARN" ]; then WAF_ARN="${{ secrets.AMPLIFY_WAF_WEB_ACL_ARN }}"; fi
           RESOURCE_ARN="arn:aws:amplify:${{ vars.AMPLIFY_AWS_REGION }}:${{ steps.account.outputs.id }}:apps/${{ steps.app.outputs.app_id }}"
-          echo "Attaching WAF to: $RESOURCE_ARN"
+          echo "Attaching WAF $WAF_ARN to: $RESOURCE_ARN"
           aws wafv2 associate-web-acl \
-            --web-acl-arn "${{ secrets.AMPLIFY_WAF_WEB_ACL_ARN }}" \
+            --web-acl-arn "$WAF_ARN" \
             --resource-arn "$RESOURCE_ARN" \
             --region us-east-1
 
@@ -131,8 +142,10 @@ jobs:
       #
       - name: Verify WAF attachment
         run: |
+          WAF_ARN="${{ inputs.waf_web_acl_arn }}"
+          if [ -z "$WAF_ARN" ]; then WAF_ARN="${{ secrets.AMPLIFY_WAF_WEB_ACL_ARN }}"; fi
           RESOURCE_ARN="arn:aws:amplify:${{ vars.AMPLIFY_AWS_REGION }}:${{ steps.account.outputs.id }}:apps/${{ steps.app.outputs.app_id }}"
-          EXPECTED="${{ secrets.AMPLIFY_WAF_WEB_ACL_ARN }}"
+          EXPECTED="$WAF_ARN"
           echo "Waiting for WAF (typically 3-5 min)..."
           for i in $(seq 1 30); do
             ATTACHED=$(aws wafv2 get-web-acl-for-resource \
