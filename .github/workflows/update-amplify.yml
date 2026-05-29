@@ -1,0 +1,182 @@
+name: Create New Amplify App
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-app:
+    name: Create → Deploy → WAF → Redis
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. AWS credentials ──────────────────────────────────────────────────
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ secrets.AWS_REGION }}
+
+      # ── 2. Check out the frontend repo ──────────────────────────────────────
+      - name: Checkout frontend code
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ secrets.AMPLIFY_FRONTEND_REPO }}
+          token:      ${{ secrets.AMPLIFY_GITHUB_TOKEN }}
+          path:       frontend
+
+      # ── 3. Generate a random app name ────────────────────────────────────────
+      - name: Generate App Name
+        id: name
+        run: |
+          SUFFIX=$(openssl rand -hex 5)
+          APP_NAME="app-${SUFFIX}-$(date +%Y%m%d)"
+          echo "app_name=$APP_NAME" >> "$GITHUB_OUTPUT"
+          echo "App name: $APP_NAME"
+
+      # ── 4. Create Amplify app — manual deploy mode (no GitHub OAuth needed) ──
+      - name: Create Amplify App
+        id: app
+        run: |
+          APP_ID=$(aws amplify create-app \
+            --name "${{ steps.name.outputs.app_name }}" \
+            --platform WEB \
+            --query 'app.appId' \
+            --output text)
+          echo "app_id=$APP_ID" >> "$GITHUB_OUTPUT"
+          echo "Created: $APP_ID"
+
+      # ── 5. Create main branch ────────────────────────────────────────────────
+      - name: Create main branch
+        run: |
+          aws amplify create-branch \
+            --app-id "${{ steps.app.outputs.app_id }}" \
+            --branch-name main \
+            --stage PRODUCTION
+
+      # ── 6. Zip, upload via presigned URL, start deployment ───────────────────
+      - name: Deploy frontend to Amplify
+        id: job
+        run: |
+          APP_ID="${{ steps.app.outputs.app_id }}"
+          cd frontend && zip -r ../frontend.zip . --exclude "*.git*" > /dev/null && cd ..
+          echo "Zip: $(du -sh frontend.zip | cut -f1)"
+
+          DEPLOY=$(aws amplify create-deployment --app-id "$APP_ID" --branch-name main --output json)
+          JOB_ID=$(echo "$DEPLOY" | jq -r '.jobId')
+          UPLOAD_URL=$(echo "$DEPLOY" | jq -r '.zipUploadUrl')
+          echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
+
+          HTTP=$(curl -s -o /dev/null -w "%{http_code}" -T frontend.zip -H "Content-Type: application/zip" "$UPLOAD_URL")
+          [ "$HTTP" = "200" ] || { echo "Upload failed (HTTP $HTTP)"; exit 1; }
+
+          aws amplify start-deployment --app-id "$APP_ID" --branch-name main --job-id "$JOB_ID"
+
+      # ── 7. Wait for build (up to 15 min) ─────────────────────────────────────
+      - name: Wait for deployment
+        run: |
+          APP_ID="${{ steps.app.outputs.app_id }}"
+          JOB_ID="${{ steps.job.outputs.job_id }}"
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job --app-id "$APP_ID" --branch-name main --job-id "$JOB_ID" \
+              --query 'job.summary.status' --output text)
+            echo "[$i/30] $STATUS"
+            case "$STATUS" in
+              SUCCEED)   echo "Build succeeded"; break ;;
+              FAILED)    echo "Build FAILED";    exit 1 ;;
+              CANCELLED) echo "Build CANCELLED"; exit 1 ;;
+            esac
+            [ "$i" -eq 30 ] && { echo "Timed out"; exit 1; }
+            sleep 30
+          done
+
+      # ── 8. Derive app URL ────────────────────────────────────────────────────
+      - name: Get app URL
+        id: url
+        run: |
+          APP_URL="https://main.${{ steps.app.outputs.app_id }}.amplifyapp.com"
+          echo "app_url=$APP_URL" >> "$GITHUB_OUTPUT"
+          echo "URL: $APP_URL"
+
+      # ── 9. AWS account ID ────────────────────────────────────────────────────
+      - name: Get AWS account ID
+        id: account
+        run: |
+          echo "id=$(aws sts get-caller-identity --query Account --output text)" >> "$GITHUB_OUTPUT"
+
+      # ── 10. Attach WAF WebACL ────────────────────────────────────────────────
+      #
+      #   WAF_WEB_ACL_ARN must be CLOUDFRONT scope → always use us-east-1
+      #
+      - name: Associate WAF WebACL
+        run: |
+          RESOURCE_ARN="arn:aws:amplify:${{ secrets.AWS_REGION }}:${{ steps.account.outputs.id }}:apps/${{ steps.app.outputs.app_id }}"
+          echo "Attaching WAF to: $RESOURCE_ARN"
+          aws wafv2 associate-web-acl \
+            --web-acl-arn "${{ secrets.WAF_WEB_ACL_ARN }}" \
+            --resource-arn "$RESOURCE_ARN" \
+            --region us-east-1
+
+      # ── 11. Wait for WAF to be confirmed active (up to 10 min) ──────────────
+      #
+      #   WAF takes 3-5 min to propagate. We block here so a second "Create"
+      #   click cannot collide with an in-progress WAF attachment.
+      #
+      - name: Verify WAF attachment
+        run: |
+          RESOURCE_ARN="arn:aws:amplify:${{ secrets.AWS_REGION }}:${{ steps.account.outputs.id }}:apps/${{ steps.app.outputs.app_id }}"
+          EXPECTED="${{ secrets.WAF_WEB_ACL_ARN }}"
+          echo "Waiting for WAF (typically 3-5 min)..."
+          for i in $(seq 1 30); do
+            ATTACHED=$(aws wafv2 get-web-acl-for-resource \
+              --resource-arn "$RESOURCE_ARN" --region us-east-1 \
+              --query 'WebACL.ARN' --output text 2>/dev/null || echo "None")
+            echo "[$i/30] $((i*20))s — $ATTACHED"
+            if [ "$ATTACHED" = "$EXPECTED" ]; then echo "WAF confirmed after $((i*20))s"; break; fi
+            [ "$i" -eq 30 ] && { echo "WAF timed out — aborting"; exit 1; }
+            sleep 20
+          done
+
+      # ── 12. Archive old URL → set new URL in Upstash ────────────────────────
+      - name: Update Upstash Redis URL
+        run: |
+          APP_URL="${{ steps.url.outputs.app_url }}"
+          NOW=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+          UPSTASH="${{ secrets.UPSTASH_REDIS_REST_URL }}"
+          TOKEN="${{ secrets.UPSTASH_REDIS_REST_TOKEN }}"
+
+          OLD_URL=$(curl -s "${UPSTASH}/get/latest_amplify_url" \
+            -H "Authorization: Bearer ${TOKEN}" | jq -r '.result // empty')
+
+          if [ -n "$OLD_URL" ]; then
+            echo "Archiving: $OLD_URL"
+            ENTRY=$(jq -c -n --arg url "$OLD_URL" --arg ts "$NOW" '{url:$url,createdAt:$ts}')
+            curl -s -X POST "$UPSTASH" \
+              -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: application/json" \
+              -d "$(jq -n --arg e "$ENTRY" '["LPUSH","amplify_url_history",$e]')"
+            curl -s -X POST "$UPSTASH" \
+              -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: application/json" \
+              -d '["LTRIM","amplify_url_history","0","49"]'
+          fi
+
+          echo "Setting new URL: $APP_URL"
+          HTTP=$(curl -s -o /tmp/r.json -w "%{http_code}" -X POST "$UPSTASH" \
+            -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: application/json" \
+            -d "[\"MSET\",\"latest_amplify_url\",\"${APP_URL}\",\"latest_amplify_url:updated_at\",\"${NOW}\"]")
+          cat /tmp/r.json && echo ""
+          [ "$HTTP" = "200" ] || { echo "Upstash failed (HTTP $HTTP)"; exit 1; }
+          echo "Done — Redis updated"
+
+      # ── 13. Summary ──────────────────────────────────────────────────────────
+      - name: Write job summary
+        if: always()
+        run: |
+          {
+            echo "## Amplify App Created"
+            echo "| | |"
+            echo "|---|---|"
+            echo "| **App ID** | \`${{ steps.app.outputs.app_id }}\` |"
+            echo "| **Live URL** | ${{ steps.url.outputs.app_url }} |"
+            echo "| **WAF** | \`${{ secrets.WAF_WEB_ACL_ARN }}\` |"
+            echo "| **Time** | $(date -u '+%Y-%m-%d %H:%M UTC') |"
+          } >> "$GITHUB_STEP_SUMMARY"
