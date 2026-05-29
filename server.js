@@ -71,16 +71,23 @@ redis.on("error", (err) => console.error("Redis error:", err.message));
 // Fetches the current rotating Netlify URL from Upstash REST API.
 // Falls back to the hardcoded target if Redis is unreachable or empty.
 async function getRotationTarget(key) {
-  if (!UPSTASH_REDIS_REST_URL || !UPSTASH_REDIS_REST_TOKEN) return null;
+  if (!UPSTASH_REDIS_REST_URL || !UPSTASH_REDIS_REST_TOKEN) {
+    console.warn(`[rotation] UPSTASH_REDIS_REST_URL or TOKEN not set — using fallback`);
+    return null;
+  }
+  const url = `${UPSTASH_REDIS_REST_URL}/get/${key}`;
   try {
-    const res = await fetch(
-      `${UPSTASH_REDIS_REST_URL}/get/${key}`,
-      { headers: { Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}` } },
-    );
-    const data = await res.json();
-    return data.result || null;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}` },
+    });
+    const text = await res.text();
+    console.log(`[rotation] GET ${key} → HTTP ${res.status} | body: ${text}`);
+    const data = JSON.parse(text);
+    const value = data.result || null;
+    console.log(`[rotation] resolved value: ${value}`);
+    return value;
   } catch (err) {
-    console.error(`[rotation] Redis fetch failed (${key}):`, err.message);
+    console.error(`[rotation] fetch failed — url: ${url} | error: ${err.message}`);
     return null;
   }
 }
