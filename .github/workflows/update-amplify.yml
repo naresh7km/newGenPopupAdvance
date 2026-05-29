@@ -29,6 +29,16 @@ jobs:
           aws-region:            ${{ vars.AMPLIFY_AWS_REGION || 'ap-northeast-1' }}
 
       # ── 2. Check out the frontend repo ──────────────────────────────────────
+      - name: Validate AMPLIFY_FRONTEND_REPO
+        run: |
+          if [ -z "${{ vars.AMPLIFY_FRONTEND_REPO }}" ]; then
+            echo "::error::AMPLIFY_FRONTEND_REPO is not set."
+            echo "Go to: GitHub repo → Settings → Secrets and variables → Actions → Variables tab → New repository variable"
+            echo "Name: AMPLIFY_FRONTEND_REPO   Value: owner/repo  (e.g. john/my-frontend)"
+            exit 1
+          fi
+          echo "Frontend repo: ${{ vars.AMPLIFY_FRONTEND_REPO }}"
+
       - name: Checkout frontend code
         uses: actions/checkout@v4
         with:
