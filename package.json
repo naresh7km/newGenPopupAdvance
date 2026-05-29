@@ -20,6 +20,23 @@
     },
     "devDependencies": {
       "nodemon": "^3.0.1"
+    },
+    "_envVars": {
+      "required": [
+        "REDIS_URL",
+        "UPSTASH_REDIS_REST_URL",
+        "UPSTASH_REDIS_REST_TOKEN",
+        "ENCRYPTION_KEY",
+        "AWS_REGION",
+        "AWS_ACCOUNT_ID",
+        "BUCKET_NAME"
+      ],
+      "optional": [
+        "AMPLIFY_URL_FALLBACK",
+        "OBJECT_KEY",
+        "PORT",
+        "IPAPI_IS_KEY"
+      ]
     }
   }
   

