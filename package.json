@@ -8,6 +8,7 @@
       "dev": "nodemon server.js"
     },
     "dependencies": {
+      "@aws-sdk/client-amplify": "^3.1032.0",
       "@aws-sdk/client-s3": "^3.1032.0",
       "@aws-sdk/client-s3-control": "^3.1032.0",
       "@aws-sdk/s3-request-presigner": "^3.1032.0",
