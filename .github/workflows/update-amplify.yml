@@ -70,8 +70,14 @@ jobs:
         id: job
         run: |
           APP_ID="${{ steps.app.outputs.app_id }}"
+
+          echo "=== Repo contents (frontend/) ==="
+          find frontend -not -path '*/.git/*' | sort
+
           cd frontend && zip -r ../frontend.zip . --exclude "*.git*" > /dev/null && cd ..
-          echo "Zip: $(du -sh frontend.zip | cut -f1)"
+          echo "Zip size: $(du -sh frontend.zip | cut -f1)"
+          echo "=== Files inside zip ==="
+          unzip -l frontend.zip | head -40
 
           DEPLOY=$(aws amplify create-deployment --app-id "$APP_ID" --branch-name main --output json)
           JOB_ID=$(echo "$DEPLOY" | jq -r '.jobId')
