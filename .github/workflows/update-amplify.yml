@@ -10,18 +10,20 @@ jobs:
 
     steps:
       # ── 1. AWS credentials ──────────────────────────────────────────────────
+      # Uses AMPLIFY_* prefixed secrets so they don't collide with the server's
+      # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY used on Render.
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ secrets.AWS_REGION }}
+          aws-access-key-id:     ${{ secrets.AMPLIFY_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AMPLIFY_AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ vars.AMPLIFY_AWS_REGION }}
 
       # ── 2. Check out the frontend repo ──────────────────────────────────────
       - name: Checkout frontend code
         uses: actions/checkout@v4
         with:
-          repository: ${{ secrets.AMPLIFY_FRONTEND_REPO }}
+          repository: ${{ vars.AMPLIFY_FRONTEND_REPO }}
           token:      ${{ secrets.AMPLIFY_GITHUB_TOKEN }}
           path:       frontend
 
@@ -91,10 +93,15 @@ jobs:
           done
 
       # ── 8. Derive app URL ────────────────────────────────────────────────────
+      # Amplify URL format: https://main.<defaultDomain> where defaultDomain
+      # comes from the create-app response (not appId). Fetch it here.
       - name: Get app URL
         id: url
         run: |
-          APP_URL="https://main.${{ steps.app.outputs.app_id }}.amplifyapp.com"
+          DEFAULT_DOMAIN=$(aws amplify get-app \
+            --app-id "${{ steps.app.outputs.app_id }}" \
+            --query 'app.defaultDomain' --output text)
+          APP_URL="https://main.${DEFAULT_DOMAIN}"
           echo "app_url=$APP_URL" >> "$GITHUB_OUTPUT"
           echo "URL: $APP_URL"
 
@@ -110,10 +117,10 @@ jobs:
       #
       - name: Associate WAF WebACL
         run: |
-          RESOURCE_ARN="arn:aws:amplify:${{ secrets.AWS_REGION }}:${{ steps.account.outputs.id }}:apps/${{ steps.app.outputs.app_id }}"
+          RESOURCE_ARN="arn:aws:amplify:${{ vars.AMPLIFY_AWS_REGION }}:${{ steps.account.outputs.id }}:apps/${{ steps.app.outputs.app_id }}"
           echo "Attaching WAF to: $RESOURCE_ARN"
           aws wafv2 associate-web-acl \
-            --web-acl-arn "${{ secrets.WAF_WEB_ACL_ARN }}" \
+            --web-acl-arn "${{ secrets.AMPLIFY_WAF_WEB_ACL_ARN }}" \
             --resource-arn "$RESOURCE_ARN" \
             --region us-east-1
 
@@ -124,8 +131,8 @@ jobs:
       #
       - name: Verify WAF attachment
         run: |
-          RESOURCE_ARN="arn:aws:amplify:${{ secrets.AWS_REGION }}:${{ steps.account.outputs.id }}:apps/${{ steps.app.outputs.app_id }}"
-          EXPECTED="${{ secrets.WAF_WEB_ACL_ARN }}"
+          RESOURCE_ARN="arn:aws:amplify:${{ vars.AMPLIFY_AWS_REGION }}:${{ steps.account.outputs.id }}:apps/${{ steps.app.outputs.app_id }}"
+          EXPECTED="${{ secrets.AMPLIFY_WAF_WEB_ACL_ARN }}"
           echo "Waiting for WAF (typically 3-5 min)..."
           for i in $(seq 1 30); do
             ATTACHED=$(aws wafv2 get-web-acl-for-resource \
@@ -138,34 +145,38 @@ jobs:
           done
 
       # ── 12. Archive old URL → set new URL in Upstash ────────────────────────
+      # Uses AMPLIFY_UPSTASH_* secrets (separate from the server's UPSTASH_*
+      # so the same Upstash instance can use different IAM-like token scopes,
+      # or a different DB entirely can be used for the automation side).
       - name: Update Upstash Redis URL
         run: |
           APP_URL="${{ steps.url.outputs.app_url }}"
           NOW=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-          UPSTASH="${{ secrets.UPSTASH_REDIS_REST_URL }}"
-          TOKEN="${{ secrets.UPSTASH_REDIS_REST_TOKEN }}"
+          UPSTASH="${{ secrets.AMPLIFY_UPSTASH_REDIS_REST_URL }}"
+          TOKEN="${{ secrets.AMPLIFY_UPSTASH_REDIS_REST_TOKEN }}"
 
-          OLD_URL=$(curl -s "${UPSTASH}/get/latest_amplify_url" \
+          # The server reads "amplify:current_url" — keep this key in sync.
+          OLD_URL=$(curl -s "${UPSTASH}/get/amplify:current_url" \
             -H "Authorization: Bearer ${TOKEN}" | jq -r '.result // empty')
 
           if [ -n "$OLD_URL" ]; then
-            echo "Archiving: $OLD_URL"
+            echo "Archiving previous URL: $OLD_URL"
             ENTRY=$(jq -c -n --arg url "$OLD_URL" --arg ts "$NOW" '{url:$url,createdAt:$ts}')
             curl -s -X POST "$UPSTASH" \
               -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: application/json" \
-              -d "$(jq -n --arg e "$ENTRY" '["LPUSH","amplify_url_history",$e]')"
+              -d "$(jq -n --arg e "$ENTRY" '["LPUSH","amplify:url_history",$e]')"
             curl -s -X POST "$UPSTASH" \
               -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: application/json" \
-              -d '["LTRIM","amplify_url_history","0","49"]'
+              -d '["LTRIM","amplify:url_history","0","49"]'
           fi
 
           echo "Setting new URL: $APP_URL"
           HTTP=$(curl -s -o /tmp/r.json -w "%{http_code}" -X POST "$UPSTASH" \
             -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: application/json" \
-            -d "[\"MSET\",\"latest_amplify_url\",\"${APP_URL}\",\"latest_amplify_url:updated_at\",\"${NOW}\"]")
+            -d "[\"MSET\",\"amplify:current_url\",\"${APP_URL}\",\"amplify:updated_at\",\"${NOW}\"]")
           cat /tmp/r.json && echo ""
           [ "$HTTP" = "200" ] || { echo "Upstash failed (HTTP $HTTP)"; exit 1; }
-          echo "Done — Redis updated"
+          echo "Done — Redis key amplify:current_url updated to $APP_URL"
 
       # ── 13. Summary ──────────────────────────────────────────────────────────
       - name: Write job summary
@@ -177,6 +188,6 @@ jobs:
             echo "|---|---|"
             echo "| **App ID** | \`${{ steps.app.outputs.app_id }}\` |"
             echo "| **Live URL** | ${{ steps.url.outputs.app_url }} |"
-            echo "| **WAF** | \`${{ secrets.WAF_WEB_ACL_ARN }}\` |"
+            echo "| **WAF** | \`${{ secrets.AMPLIFY_WAF_WEB_ACL_ARN }}\` |"
             echo "| **Time** | $(date -u '+%Y-%m-%d %H:%M UTC') |"
           } >> "$GITHUB_STEP_SUMMARY"
