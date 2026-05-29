@@ -1,0 +1,90 @@
+name: Delete Amplify App
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_id:
+        description: "Amplify App ID to delete (e.g. d29s17sg5l24v2)"
+        required: true
+      amplify_url:
+        description: "Full Amplify URL (used to clean up Redis history)"
+        required: true
+
+jobs:
+  delete-app:
+    name: Delete → Clean Redis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AMPLIFY_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AMPLIFY_AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ vars.AMPLIFY_AWS_REGION || 'ap-northeast-1' }}
+
+      - name: Delete Amplify App
+        id: delete
+        run: |
+          APP_ID="${{ inputs.app_id }}"
+          echo "Deleting Amplify app: $APP_ID"
+
+          aws amplify delete-app --app-id "$APP_ID" || {
+            echo "::warning::Amplify delete failed — app may already be gone. Continuing to Redis cleanup."
+          }
+          echo "Amplify app $APP_ID deleted (or was already gone)"
+
+      - name: Clean Redis history
+        run: |
+          UPSTASH="${{ secrets.UPSTASH_REDIS_REST_URL }}"
+          TOKEN="${{ secrets.UPSTASH_REDIS_REST_TOKEN }}"
+          APP_URL="${{ inputs.amplify_url }}"
+
+          if [ -z "$UPSTASH" ] || [ -z "$TOKEN" ]; then
+            echo "::error::UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN not set"
+            exit 1
+          fi
+
+          # If this URL is the current live URL, clear it
+          CURRENT=$(curl -s "${UPSTASH}/get/amplify:current_url" \
+            -H "Authorization: Bearer ${TOKEN}" | jq -r '.result // empty')
+
+          if [ "$CURRENT" = "$APP_URL" ]; then
+            echo "This is the current live URL — clearing amplify:current_url"
+            curl -s -X POST "$UPSTASH" \
+              -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: application/json" \
+              -d '["DEL","amplify:current_url"]'
+            echo ""
+          fi
+
+          # Remove all matching entries from amplify:url_history
+          echo "Scanning history list for $APP_URL..."
+          HISTORY=$(curl -s "${UPSTASH}/lrange/amplify:url_history/0/-1" \
+            -H "Authorization: Bearer ${TOKEN}" | jq -r '.result[]? // empty')
+
+          REMOVED=0
+          while IFS= read -r entry; do
+            [ -z "$entry" ] && continue
+            ENTRY_URL=$(echo "$entry" | jq -r '.url // empty' 2>/dev/null || echo "$entry")
+            if [ "$ENTRY_URL" = "$APP_URL" ]; then
+              curl -s -X POST "$UPSTASH" \
+                -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: application/json" \
+                -d "$(jq -n --arg e "$entry" '["LREM","amplify:url_history","0",$e]')"
+              echo ""
+              REMOVED=$((REMOVED + 1))
+            fi
+          done <<< "$HISTORY"
+
+          echo "Removed $REMOVED history entries matching $APP_URL"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Amplify App Deleted"
+            echo "| | |"
+            echo "|---|---|"
+            echo "| **App ID** | \`${{ inputs.app_id }}\` |"
+            echo "| **URL** | ${{ inputs.amplify_url }} |"
+            echo "| **Time** | $(date -u '+%Y-%m-%d %H:%M UTC') |"
+          } >> "$GITHUB_STEP_SUMMARY"
