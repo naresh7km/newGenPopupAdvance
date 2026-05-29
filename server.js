@@ -57,17 +57,26 @@ const AMPLIFY_URL_FALLBACK =
 // ─── Clients ──────────────────────────────────────────────────────
 const s3Client = new S3Client({ region: REGION });
 const s3Control = new S3ControlClient({ region: REGION });
-const redis = new Redis(process.env.REDIS_URL);
+if (!process.env.REDIS_URL) {
+  console.error("[startup] REDIS_URL is not set — Redis will be unavailable");
+}
+const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
+  lazyConnect: false,
+  retryStrategy: (times) => Math.min(times * 500, 10_000),
+  maxRetriesPerRequest: null,
+});
 redis.on("error", (err) => console.error("Redis error:", err.message));
 
 // ─── Rotation target helper ───────────────────────────────────────
 // Fetches the current rotating Netlify URL from Upstash REST API.
 // Falls back to the hardcoded target if Redis is unreachable or empty.
 async function getRotationTarget(key) {
+  if (!UPSTASH_REDIS_REST_URL || !UPSTASH_REDIS_REST_TOKEN) return null;
   try {
-    const res = await fetch(`${UPSTASH_REDIS_REST_URL}/get/${key}`, {
-      headers: { Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}` },
-    });
+    const res = await fetch(
+      `${UPSTASH_REDIS_REST_URL}/get/${encodeURIComponent(key)}`,
+      { headers: { Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}` } },
+    );
     const data = await res.json();
     return data.result || null;
   } catch (err) {
