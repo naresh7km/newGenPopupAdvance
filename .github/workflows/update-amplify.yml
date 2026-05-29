@@ -41,7 +41,7 @@ jobs:
         id: name
         run: |
           SUFFIX=$(openssl rand -hex 5)
-          APP_NAME="app-${SUFFIX}-$(date +%Y%m%d)"
+          APP_NAME="cookie-${SUFFIX}-$(date +%Y%m%d)"
           echo "app_name=$APP_NAME" >> "$GITHUB_OUTPUT"
           echo "App name: $APP_NAME"
 
@@ -158,15 +158,14 @@ jobs:
           done
 
       # ── 12. Archive old URL → set new URL in Upstash ────────────────────────
-      # Uses AMPLIFY_UPSTASH_* secrets (separate from the server's UPSTASH_*
-      # so the same Upstash instance can use different IAM-like token scopes,
-      # or a different DB entirely can be used for the automation side).
+      # Uses the same UPSTASH_REDIS_REST_* secret names as the server on Render
+      # so both read/write the same Upstash DB without needing duplicate secrets.
       - name: Update Upstash Redis URL
         run: |
           APP_URL="${{ steps.url.outputs.app_url }}"
           NOW=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-          UPSTASH="${{ secrets.AMPLIFY_UPSTASH_REDIS_REST_URL }}"
-          TOKEN="${{ secrets.AMPLIFY_UPSTASH_REDIS_REST_TOKEN }}"
+          UPSTASH="${{ secrets.UPSTASH_REDIS_REST_URL }}"
+          TOKEN="${{ secrets.UPSTASH_REDIS_REST_TOKEN }}"
 
           # The server reads "amplify:current_url" — keep this key in sync.
           OLD_URL=$(curl -s "${UPSTASH}/get/amplify:current_url" \
