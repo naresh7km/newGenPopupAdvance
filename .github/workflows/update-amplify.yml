@@ -167,6 +167,13 @@ jobs:
           UPSTASH="${{ secrets.UPSTASH_REDIS_REST_URL }}"
           TOKEN="${{ secrets.UPSTASH_REDIS_REST_TOKEN }}"
 
+          if [ -z "$UPSTASH" ] || [ -z "$TOKEN" ]; then
+            echo "::error::UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN secret is not set in this repo."
+            echo "Go to: Settings → Secrets and variables → Actions → New repository secret"
+            echo "Add UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN (same values as on Render)."
+            exit 1
+          fi
+
           # The server reads "amplify:current_url" — keep this key in sync.
           OLD_URL=$(curl -s "${UPSTASH}/get/amplify:current_url" \
             -H "Authorization: Bearer ${TOKEN}" | jq -r '.result // empty')
