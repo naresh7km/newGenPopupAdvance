@@ -74,7 +74,7 @@ async function getRotationTarget(key) {
   if (!UPSTASH_REDIS_REST_URL || !UPSTASH_REDIS_REST_TOKEN) return null;
   try {
     const res = await fetch(
-      `${UPSTASH_REDIS_REST_URL}/get/${encodeURIComponent(key)}`,
+      `${UPSTASH_REDIS_REST_URL}/get/${key}`,
       { headers: { Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}` } },
     );
     const data = await res.json();
