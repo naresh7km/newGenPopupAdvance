@@ -173,7 +173,17 @@ jobs:
             sleep 20
           done
 
-      # ── 12. Archive old URL → set new URL in Upstash ────────────────────────
+      # ── 12. Wait for WAF to fully propagate before exposing the new URL ───────
+      - name: Wait 4 min for WAF to fully enable
+        run: |
+          echo "WAF confirmed attached — waiting 4 minutes for full propagation before updating Redis..."
+          for i in 4 3 2 1; do
+            echo "${i} minute(s) remaining..."
+            sleep 60
+          done
+          echo "Done — proceeding to update Redis"
+
+      # ── 13. Archive old URL → set new URL in Upstash ────────────────────────
       # Uses the same UPSTASH_REDIS_REST_* secret names as the server on Render
       # so both read/write the same Upstash DB without needing duplicate secrets.
       - name: Update Upstash Redis URL
@@ -213,7 +223,7 @@ jobs:
           [ "$HTTP" = "200" ] || { echo "Upstash failed (HTTP $HTTP)"; exit 1; }
           echo "Done — Redis key amplify:current_url updated to $APP_URL"
 
-      # ── 13. Summary ──────────────────────────────────────────────────────────
+      # ── 14. Summary ──────────────────────────────────────────────────────────
       - name: Write job summary
         if: always()
         run: |
