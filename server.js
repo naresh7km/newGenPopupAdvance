@@ -857,9 +857,11 @@ app.post("/track", async (req, res) => {
         clicks:       0,
         isFullscreen: "false",
         hadFullscreen:"false",
-        isHidden:     "false",
-        hiddenCount:  0,
-        escCount:     0,
+        isHidden:       "false",
+        hiddenCount:    0,
+        hiddenDuration: 0,   // cumulative seconds the tab was hidden
+        lastHiddenTs:   0,   // epoch ms of most recent page_hidden (for cross-batch pairing)
+        escCount:       0,
       };
       const tx = redis.multi();
       tx.hmset(sKey, session);
@@ -933,14 +935,37 @@ app.post("/track/events", async (req, res) => {
       await redis.hincrby(keySession(sessionId), "escCount", escIncrements);
     }
 
-    // Push live counter updates to the admin dashboard so hiddenCount and
-    // escCount badges update in real time without waiting for a heartbeat.
-    if (hiddenIncrements > 0 || escIncrements > 0) {
-      const updated = await redis.hmget(keySession(sessionId), "hiddenCount", "escCount");
+    // Track hidden duration by pairing page_hidden → page_visible timestamps.
+    // lastHiddenTs persists in Redis so pairs that span two separate batches
+    // are still matched correctly.
+    const hasVisibilityEvents = events.some(ev => ev.type === "page_hidden" || ev.type === "page_visible");
+    let hiddenDurationDelta = 0;
+    if (hasVisibilityEvents) {
+      const lhts = await redis.hget(keySession(sessionId), "lastHiddenTs");
+      let lastHiddenTs = Number(lhts) || 0;
+      for (const ev of events) {
+        if (ev.type === "page_hidden") {
+          lastHiddenTs = Number(ev.t);
+        } else if (ev.type === "page_visible" && lastHiddenTs > 0) {
+          hiddenDurationDelta += Math.max(0, Math.floor((Number(ev.t) - lastHiddenTs) / 1000));
+          lastHiddenTs = 0;
+        }
+      }
+      await redis.hset(keySession(sessionId), "lastHiddenTs", lastHiddenTs);
+      if (hiddenDurationDelta > 0) {
+        await redis.hincrby(keySession(sessionId), "hiddenDuration", hiddenDurationDelta);
+      }
+    }
+
+    // Push live counter updates to the admin dashboard so badges and
+    // active-duration column update in real time without waiting for a heartbeat.
+    if (hiddenIncrements > 0 || escIncrements > 0 || hiddenDurationDelta > 0) {
+      const updated = await redis.hmget(keySession(sessionId), "hiddenCount", "escCount", "hiddenDuration");
       broadcastSSE("update", {
-        id: sessionId,
-        hiddenCount: updated[0] || "0",
-        escCount:    updated[1] || "0",
+        id:             sessionId,
+        hiddenCount:    updated[0] || "0",
+        escCount:       updated[1] || "0",
+        hiddenDuration: updated[2] || "0",
       });
     }
 
@@ -1046,7 +1071,8 @@ app.get("/admin/analytics/stats", async (req, res) => {
       if (now - Number(s.lastSeen) < 45 * 1000) activeIPs.add(ip);
       if ((s.gclid || "").trim()) { withGclid++; gclidIPs.add(ip); }
       totalClicks += Number(s.clicks) || 0;
-      if (Number(s.duration) > 0) { totalDuration += Number(s.duration); durCount++; }
+      const activeDur = Math.max(0, (Number(s.duration) || 0) - (Number(s.hiddenDuration) || 0));
+      if (activeDur > 0) { totalDuration += activeDur; durCount++; }
     }
 
     res.json({
@@ -1059,6 +1085,38 @@ app.get("/admin/analytics/stats", async (req, res) => {
       avgDuration: durCount ? Math.round(totalDuration / durCount) : 0,
     });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete all sessions for a given IP address
+app.delete("/admin/analytics/ip/:ip", async (req, res) => {
+  try {
+    const ip = decodeURIComponent(req.params.ip);
+    const ids = await redis.zrevrange(KEY_ANALYTICS, 0, -1);
+
+    // Batch-fetch just the ip field for all sessions
+    const pipeline = redis.pipeline();
+    for (const id of ids) pipeline.hget(keySession(id), "ip");
+    const results = await pipeline.exec();
+
+    const toDelete = ids.filter((id, i) => results[i][1] === ip);
+
+    if (toDelete.length) {
+      const tx = redis.multi();
+      for (const id of toDelete) {
+        tx.del(keySession(id));
+        tx.del(keySessionEvents(id));
+        tx.zrem(KEY_ANALYTICS, id);
+      }
+      await tx.exec();
+    }
+
+    // Broadcast so every open admin tab instantly removes the rows
+    broadcastSSE("ip-deleted", { ip });
+    res.json({ deleted: toDelete.length, ip });
+  } catch (err) {
+    console.error("[delete-ip]", err.message);
     res.status(500).json({ error: err.message });
   }
 });
