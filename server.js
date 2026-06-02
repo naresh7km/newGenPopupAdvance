@@ -831,6 +831,10 @@ app.post("/track", async (req, res) => {
       req.socket.remoteAddress ||
       "unknown";
 
+    // Silently drop any tracking from IPs that were deleted by an admin.
+    const isBlocked = await redis.get(`analytics:blocked:${ip}`);
+    if (isBlocked) return res.status(200).json({ ok: true });
+
     const now = Date.now();
     const sKey = keySession(sessionId);
     const existing = await redis.hgetall(sKey);
@@ -1119,6 +1123,10 @@ app.delete("/admin/analytics/ip/:ip", async (req, res) => {
       }
       await tx.exec();
     }
+
+    // Block this IP so future heartbeats don't recreate sessions.
+    // Key expires after 48 h — same lifetime as session data.
+    await redis.setex(`analytics:blocked:${ip}`, 48 * 3600, "1");
 
     // Broadcast so every open admin tab instantly removes the rows
     broadcastSSE("ip-deleted", { ip });
