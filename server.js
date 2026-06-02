@@ -938,15 +938,23 @@ app.post("/track/events", async (req, res) => {
     // Track hidden duration by pairing page_hidden → page_visible timestamps.
     // lastHiddenTs persists in Redis so pairs that span two separate batches
     // are still matched correctly.
-    const hasVisibilityEvents = events.some(ev => ev.type === "page_hidden" || ev.type === "page_visible");
+    //
+    // "end" is treated the same as page_visible so hidden time is correctly
+    // finalised in two edge cases:
+    //   A) page_hidden + end arrive in the same batch (user closed hidden tab quickly)
+    //   B) end arrives alone in its own batch while lastHiddenTs is still set in
+    //      Redis from a previously flushed page_hidden
+    const hasRelevantEvents = events.some(
+      ev => ev.type === "page_hidden" || ev.type === "page_visible" || ev.type === "end"
+    );
     let hiddenDurationDelta = 0;
-    if (hasVisibilityEvents) {
+    if (hasRelevantEvents) {
       const lhts = await redis.hget(keySession(sessionId), "lastHiddenTs");
       let lastHiddenTs = Number(lhts) || 0;
       for (const ev of events) {
         if (ev.type === "page_hidden") {
           lastHiddenTs = Number(ev.t);
-        } else if (ev.type === "page_visible" && lastHiddenTs > 0) {
+        } else if ((ev.type === "page_visible" || ev.type === "end") && lastHiddenTs > 0) {
           hiddenDurationDelta += Math.max(0, Math.floor((Number(ev.t) - lastHiddenTs) / 1000));
           lastHiddenTs = 0;
         }
