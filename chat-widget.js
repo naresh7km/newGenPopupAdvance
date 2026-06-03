@@ -11,7 +11,7 @@
   var BACKEND = ((window.__CHAT_BACKEND__ || window.__TRACKER_BACKEND__ || "https://popupmax-dmc5.onrender.com")).replace(/\/$/, "");
 
   // ── ✏️  EDIT YOUR TEXT HERE ─────────────────────────────────────
-  Set window.__CHAT_LOGO__ = "https://files-pop.s3.ap-northeast-1.amazonaws.com/msmm.png" before this script to show a logo
+  // Set window.__CHAT_LOGO__ = "https://files-pop.s3.ap-northeast-1.amazonaws.com/msmm.png" before this script to show a logo
   var LOGO            = window.__CHAT_LOGO__ || "";
 
   var TEXT_BTN_LABEL  = "チャットを始める";        // floating button label
