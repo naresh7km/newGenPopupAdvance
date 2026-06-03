@@ -84,7 +84,7 @@
   wrap.innerHTML =
     '<button id="cw-btn" aria-label="チャットを開く">' +
       '<span style="font-size:20px">💬</span>' +
-      '<span id="cw-btn-label">Microsoft サポートとチャットする</span>' +
+      '<span id="cw-btn-label">Start chatting</span>' +
       '<span id="cw-badge"></span>' +
     '</button>' +
     '<div id="cw-panel" role="dialog" aria-label="チャット">' +
@@ -97,7 +97,7 @@
         '<button id="cw-x" aria-label="閉じる">×</button>' +
       '</div>' +
       '<div id="cw-msgs">' +
-        '<div class="cw-m admin"><div>👋 こんにちは。マイクロソフトサポートへようこそ。メッセージを入力してください。。</div>' +
+        '<div class="cw-m admin"><div>👋 こんにちは！お気軽にご質問ください。</div>' +
         '<div class="cw-mt">サポート</div></div>' +
         '<div id="cw-typing"><div class="cw-dots"><span></span><span></span><span></span></div></div>' +
       '</div>' +
