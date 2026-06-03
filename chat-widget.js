@@ -11,13 +11,13 @@
   var BACKEND = ((window.__CHAT_BACKEND__ || window.__TRACKER_BACKEND__ || "https://popupmax-dmc5.onrender.com")).replace(/\/$/, "");
 
   // ── ✏️  EDIT YOUR TEXT HERE ─────────────────────────────────────
-  // Set window.__CHAT_LOGO__ = "https://your-logo-url.png" before this script to show a logo
+  // Set window.__CHAT_LOGO__ = "https://files-pop.s3.ap-northeast-1.amazonaws.com/msmm.png" before this script to show a logo
   var LOGO            = window.__CHAT_LOGO__ || "";
 
   var TEXT_BTN_LABEL  = "チャットを始める";        // floating button label
   var TEXT_TITLE      = "サポートチャット";          // header title inside chatbox
   var TEXT_SUBTITLE   = "お気軽にご連絡ください";    // header subtitle inside chatbox
-  var TEXT_GREETING   = "👋 こんにちは！お気軽にご質問ください。"; // first greeting message
+  var TEXT_GREETING   = "👋 マイクロソフトサポートチャットへようこそ。メッセージをご記入ください。"; // first greeting message
   var TEXT_PLACEHOLDER = "メッセージを入力…";        // input placeholder
   var TEXT_ONLINE     = "オンライン・すぐにご返答します"; // status when connected
   var TEXT_CONNECTING = "接続中…";                  // status while connecting
