@@ -9,8 +9,19 @@
  */
 (function () {
   var BACKEND = ((window.__CHAT_BACKEND__ || window.__TRACKER_BACKEND__ || "https://popupmax-dmc5.onrender.com")).replace(/\/$/, "");
-  // Set window.__CHAT_LOGO__ = "https://your-logo-url.png" before this script to show a logo in the header
-  var LOGO = window.__CHAT_LOGO__ || "";
+
+  // ── ✏️  EDIT YOUR TEXT HERE ─────────────────────────────────────
+  // Set window.__CHAT_LOGO__ = "https://your-logo-url.png" before this script to show a logo
+  var LOGO            = window.__CHAT_LOGO__ || "";
+
+  var TEXT_BTN_LABEL  = "チャットを始める";        // floating button label
+  var TEXT_TITLE      = "サポートチャット";          // header title inside chatbox
+  var TEXT_SUBTITLE   = "お気軽にご連絡ください";    // header subtitle inside chatbox
+  var TEXT_GREETING   = "👋 こんにちは！お気軽にご質問ください。"; // first greeting message
+  var TEXT_PLACEHOLDER = "メッセージを入力…";        // input placeholder
+  var TEXT_ONLINE     = "オンライン・すぐにご返答します"; // status when connected
+  var TEXT_CONNECTING = "接続中…";                  // status while connecting
+  // ────────────────────────────────────────────────────────────────
 
   // ── Inject styles ───────────────────────────────────────────────
   var style = document.createElement("style");
@@ -82,27 +93,27 @@
 
   var wrap = document.createElement("div");
   wrap.innerHTML =
-    '<button id="cw-btn" aria-label="チャットを開く">' +
+    '<button id="cw-btn" aria-label="' + TEXT_BTN_LABEL + '">' +
       '<span style="font-size:20px">💬</span>' +
-      '<span id="cw-btn-label">Start chatting</span>' +
+      '<span id="cw-btn-label">' + TEXT_BTN_LABEL + '</span>' +
       '<span id="cw-badge"></span>' +
     '</button>' +
-    '<div id="cw-panel" role="dialog" aria-label="チャット">' +
+    '<div id="cw-panel" role="dialog">' +
       '<div id="cw-head">' +
         '<div id="cw-head-info">' +
           logoHTML +
-          '<div><div id="cw-head-title">サポートチャット</div>' +
-          '<div id="cw-head-sub">お気軽にご連絡ください</div></div>' +
+          '<div><div id="cw-head-title">' + TEXT_TITLE + '</div>' +
+          '<div id="cw-head-sub">' + TEXT_SUBTITLE + '</div></div>' +
         '</div>' +
         '<button id="cw-x" aria-label="閉じる">×</button>' +
       '</div>' +
       '<div id="cw-msgs">' +
-        '<div class="cw-m admin"><div>👋 こんにちは！お気軽にご質問ください。</div>' +
-        '<div class="cw-mt">サポート</div></div>' +
+        '<div class="cw-m admin"><div>' + TEXT_GREETING + '</div>' +
+        '<div class="cw-mt">support</div></div>' +
         '<div id="cw-typing"><div class="cw-dots"><span></span><span></span><span></span></div></div>' +
       '</div>' +
       '<div id="cw-foot">' +
-        '<textarea id="cw-in" placeholder="メッセージを入力…" rows="1"></textarea>' +
+        '<textarea id="cw-in" placeholder="' + TEXT_PLACEHOLDER + '" rows="1"></textarea>' +
         '<button id="cw-sb" aria-label="送信">&#10148;</button>' +
       '</div>' +
     '</div>';
@@ -253,7 +264,7 @@
   function closePanel() {
     isOpen = false;
     panel.classList.remove("open");
-    btn.innerHTML = '<span style="font-size:20px">💬</span><span id="cw-btn-label">Start chatting</span><span id="cw-badge"></span>';
+    btn.innerHTML = '<span style="font-size:20px">💬</span><span id="cw-btn-label">' + TEXT_BTN_LABEL + '</span><span id="cw-badge"></span>';
     badge = document.getElementById("cw-badge");
     if (unreadCount) bumpUnread();
   }
@@ -265,9 +276,9 @@
   // Pulse the subtitle while SSE is connected so user knows it's live
   setInterval(function () {
     if (sseConn && sseConn.readyState === 1) {
-      headSub.textContent = "オンライン・すぐにご返答します";
+      headSub.textContent = TEXT_ONLINE;
     } else {
-      headSub.textContent = "接続中…";
+      headSub.textContent = TEXT_CONNECTING;
     }
   }, 3000);
 })();
