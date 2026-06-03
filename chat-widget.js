@@ -16,7 +16,7 @@
     "#cw-btn{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;",
     "background:#3b82f6;color:#fff;border:none;cursor:pointer;font-size:22px;",
     "display:flex;align-items:center;justify-content:center;",
-    "box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:9999;transition:transform .2s,background .2s;}",
+    "box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:250000;transition:transform .2s,background .2s;}",
     "#cw-btn:hover{background:#2563eb;transform:scale(1.07);}",
     "#cw-badge{position:absolute;top:-3px;right:-3px;background:#ef4444;color:#fff;",
     "border-radius:50%;min-width:18px;height:18px;font-size:10px;font-weight:700;",
@@ -24,7 +24,7 @@
 
     "#cw-panel{position:fixed;bottom:90px;right:24px;width:360px;height:520px;",
     "background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.22);",
-    "display:none;flex-direction:column;overflow:hidden;z-index:9998;",
+    "display:none;flex-direction:column;overflow:hidden;z-index:249999;",
     "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;}",
     "#cw-panel.open{display:flex;}",
 
