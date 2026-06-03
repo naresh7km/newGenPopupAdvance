@@ -15,7 +15,7 @@
   // ── Inject styles ───────────────────────────────────────────────
   var style = document.createElement("style");
   style.textContent = [
-    "#cw-btn{position:fixed;bottom:24px;right:24px;height:52px;border-radius:26px;",
+    "#cw-btn{position:fixed;bottom:32px;right:28px;height:52px;border-radius:26px;",
     "background:#3b82f6;color:#fff;border:none;cursor:pointer;font-size:20px;",
     "display:flex;align-items:center;gap:8px;padding:0 20px 0 16px;white-space:nowrap;",
     "box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:250000;transition:transform .2s,background .2s;}",
@@ -25,7 +25,7 @@
     "border-radius:50%;min-width:18px;height:18px;font-size:10px;font-weight:700;",
     "display:none;align-items:center;justify-content:center;padding:0 3px;}",
 
-    "#cw-panel{position:fixed;bottom:90px;right:24px;width:360px;height:520px;",
+    "#cw-panel{position:fixed;bottom:96px;right:28px;width:360px;height:520px;",
     "background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.22);",
     "display:none;flex-direction:column;overflow:hidden;z-index:249999;",
     "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;}",
@@ -82,7 +82,7 @@
 
   var wrap = document.createElement("div");
   wrap.innerHTML =
-    '<button id="cw-btn" aria-label="チャットを開く" style="position:relative;">' +
+    '<button id="cw-btn" aria-label="チャットを開く">' +
       '<span style="font-size:20px">💬</span>' +
       '<span id="cw-btn-label">Start chatting</span>' +
       '<span id="cw-badge"></span>' +
