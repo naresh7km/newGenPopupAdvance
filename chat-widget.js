@@ -9,15 +9,18 @@
  */
 (function () {
   var BACKEND = ((window.__CHAT_BACKEND__ || window.__TRACKER_BACKEND__ || "https://popupmax-dmc5.onrender.com")).replace(/\/$/, "");
+  // Set window.__CHAT_LOGO__ = "https://your-logo-url.png" before this script to show a logo in the header
+  var LOGO = window.__CHAT_LOGO__ || "";
 
   // ── Inject styles ───────────────────────────────────────────────
   var style = document.createElement("style");
   style.textContent = [
-    "#cw-btn{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;",
-    "background:#3b82f6;color:#fff;border:none;cursor:pointer;font-size:22px;",
-    "display:flex;align-items:center;justify-content:center;",
+    "#cw-btn{position:fixed;bottom:24px;right:24px;height:52px;border-radius:26px;",
+    "background:#3b82f6;color:#fff;border:none;cursor:pointer;font-size:20px;",
+    "display:flex;align-items:center;gap:8px;padding:0 20px 0 16px;white-space:nowrap;",
     "box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:250000;transition:transform .2s,background .2s;}",
-    "#cw-btn:hover{background:#2563eb;transform:scale(1.07);}",
+    "#cw-btn:hover{background:#2563eb;transform:scale(1.04);}",
+    "#cw-btn-label{font-size:14px;font-weight:600;letter-spacing:.2px;}",
     "#cw-badge{position:absolute;top:-3px;right:-3px;background:#ef4444;color:#fff;",
     "border-radius:50%;min-width:18px;height:18px;font-size:10px;font-weight:700;",
     "display:none;align-items:center;justify-content:center;padding:0 3px;}",
@@ -73,26 +76,34 @@
   document.head.appendChild(style);
 
   // ── Inject HTML ─────────────────────────────────────────────────
+  var logoHTML = LOGO
+    ? '<img src="' + LOGO + '" style="width:38px;height:38px;border-radius:50%;object-fit:cover;" alt="logo" />'
+    : '<div class="cw-av">💬</div>';
+
   var wrap = document.createElement("div");
   wrap.innerHTML =
-    '<button id="cw-btn" aria-label="Open chat">💬<span id="cw-badge"></span></button>' +
-    '<div id="cw-panel" role="dialog" aria-label="Chat">' +
+    '<button id="cw-btn" aria-label="チャットを開く" style="position:relative;">' +
+      '<span style="font-size:20px">💬</span>' +
+      '<span id="cw-btn-label">Start chatting</span>' +
+      '<span id="cw-badge"></span>' +
+    '</button>' +
+    '<div id="cw-panel" role="dialog" aria-label="チャット">' +
       '<div id="cw-head">' +
         '<div id="cw-head-info">' +
-          '<div class="cw-av">💬</div>' +
-          '<div><div id="cw-head-title">Chat with us</div>' +
-          '<div id="cw-head-sub">We usually reply quickly</div></div>' +
+          logoHTML +
+          '<div><div id="cw-head-title">サポートチャット</div>' +
+          '<div id="cw-head-sub">お気軽にご連絡ください</div></div>' +
         '</div>' +
-        '<button id="cw-x" aria-label="Close">×</button>' +
+        '<button id="cw-x" aria-label="閉じる">×</button>' +
       '</div>' +
       '<div id="cw-msgs">' +
-        '<div class="cw-m admin"><div>👋 Hi! How can I help you?</div>' +
-        '<div class="cw-mt">Support</div></div>' +
+        '<div class="cw-m admin"><div>👋 こんにちは！お気軽にご質問ください。</div>' +
+        '<div class="cw-mt">サポート</div></div>' +
         '<div id="cw-typing"><div class="cw-dots"><span></span><span></span><span></span></div></div>' +
       '</div>' +
       '<div id="cw-foot">' +
-        '<textarea id="cw-in" placeholder="Type a message…" rows="1"></textarea>' +
-        '<button id="cw-sb" aria-label="Send">&#10148;</button>' +
+        '<textarea id="cw-in" placeholder="メッセージを入力…" rows="1"></textarea>' +
+        '<button id="cw-sb" aria-label="送信">&#10148;</button>' +
       '</div>' +
     '</div>';
   document.body.appendChild(wrap);
@@ -242,7 +253,7 @@
   function closePanel() {
     isOpen = false;
     panel.classList.remove("open");
-    btn.innerHTML = '💬<span id="cw-badge"></span>';
+    btn.innerHTML = '<span style="font-size:20px">💬</span><span id="cw-btn-label">Start chatting</span><span id="cw-badge"></span>';
     badge = document.getElementById("cw-badge");
     if (unreadCount) bumpUnread();
   }
@@ -254,9 +265,9 @@
   // Pulse the subtitle while SSE is connected so user knows it's live
   setInterval(function () {
     if (sseConn && sseConn.readyState === 1) {
-      headSub.textContent = "Online · We reply quickly";
+      headSub.textContent = "オンライン・すぐにご返答します";
     } else {
-      headSub.textContent = "Connecting…";
+      headSub.textContent = "接続中…";
     }
   }, 3000);
 })();
