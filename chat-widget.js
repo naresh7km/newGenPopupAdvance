@@ -46,8 +46,16 @@
     "align-items:center;justify-content:space-between;flex-shrink:0;}",
     "#cw-head-info{display:flex;align-items:center;gap:10px;}",
     ".cw-av{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.22);",
-    "display:flex;align-items:center;justify-content:center;font-size:18px;}",
-    "#cw-head-title{font-weight:600;font-size:15px;line-height:1.2;}",
+    "display:flex;align-items:center;justify-content:center;}",
+    ".cw-av-wrap{position:relative;flex-shrink:0;}",
+    ".cw-av-wrap .cw-live-dot{position:absolute;bottom:1px;right:1px;}",
+    ".cw-live-dot{display:inline-block;width:9px;height:9px;border-radius:50%;",
+    "background:#22c55e;border:2px solid rgba(59,130,246,1);flex-shrink:0;",
+    "box-shadow:0 0 0 0 rgba(34,197,94,.5);animation:cwlivepulse 1.6s infinite;}",
+    "@keyframes cwlivepulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)}",
+    "70%{box-shadow:0 0 0 7px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}",
+    "#cw-head-title{font-weight:600;font-size:15px;line-height:1.2;",
+    "display:flex;align-items:center;gap:6px;}",
     "#cw-head-sub{font-size:11px;opacity:.82;}",
     "#cw-x{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;",
     "opacity:.75;line-height:1;padding:0;}#cw-x:hover{opacity:1;}",
@@ -87,23 +95,34 @@
   document.head.appendChild(style);
 
   // ── Inject HTML ─────────────────────────────────────────────────
-  var logoHTML = LOGO
-    ? '<img src="' + LOGO + '" style="width:38px;height:38px;border-radius:50%;object-fit:cover;" alt="logo" />'
-    : '<div class="cw-av">💬</div>';
+  // Support headset SVG icon
+  var supportIcon =
+    '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M3 18v-6a9 9 0 0 1 18 0v6"/>' +
+      '<path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/>' +
+      '<path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>' +
+    '</svg>';
+
+  // Avatar area in header: logo if set, otherwise support icon with live dot
+  var avatarHTML = LOGO
+    ? '<div class="cw-av-wrap"><img src="' + LOGO + '" style="width:38px;height:38px;border-radius:50%;object-fit:cover;" alt="logo" /><span class="cw-live-dot"></span></div>'
+    : '<div class="cw-av-wrap"><div class="cw-av">' + supportIcon + '</div><span class="cw-live-dot"></span></div>';
 
   var wrap = document.createElement("div");
   wrap.innerHTML =
     '<button id="cw-btn" aria-label="' + TEXT_BTN_LABEL + '">' +
-      '<span style="font-size:20px">💬</span>' +
+      '<span style="display:flex;align-items:center;">' + supportIcon + '</span>' +
       '<span id="cw-btn-label">' + TEXT_BTN_LABEL + '</span>' +
       '<span id="cw-badge"></span>' +
     '</button>' +
     '<div id="cw-panel" role="dialog">' +
       '<div id="cw-head">' +
         '<div id="cw-head-info">' +
-          logoHTML +
-          '<div><div id="cw-head-title">' + TEXT_TITLE + '</div>' +
-          '<div id="cw-head-sub">' + TEXT_SUBTITLE + '</div></div>' +
+          avatarHTML +
+          '<div>' +
+            '<div id="cw-head-title">' + TEXT_TITLE + '<span class="cw-live-dot" style="border-color:rgba(255,255,255,.3)"></span></div>' +
+            '<div id="cw-head-sub">' + TEXT_SUBTITLE + '</div>' +
+          '</div>' +
         '</div>' +
         '<button id="cw-x" aria-label="閉じる">×</button>' +
       '</div>' +
@@ -257,14 +276,14 @@
     clearUnread();
     scrollBottom();
     input.focus();
-    btn.innerHTML = '<span style="font-size:20px">×</span><span id="cw-badge"></span>';
+    btn.innerHTML = '<span style="font-size:22px;line-height:1">×</span><span id="cw-badge"></span>';
     badge = document.getElementById("cw-badge");
   }
 
   function closePanel() {
     isOpen = false;
     panel.classList.remove("open");
-    btn.innerHTML = '<span style="font-size:20px">💬</span><span id="cw-btn-label">' + TEXT_BTN_LABEL + '</span><span id="cw-badge"></span>';
+    btn.innerHTML = '<span style="display:flex;align-items:center;">' + supportIcon + '</span><span id="cw-btn-label">' + TEXT_BTN_LABEL + '</span><span id="cw-badge"></span>';
     badge = document.getElementById("cw-badge");
     if (unreadCount) bumpUnread();
   }
