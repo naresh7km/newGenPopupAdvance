@@ -1486,6 +1486,220 @@ app.get("/tracker.js", (_req, res) => {
 
 // ─── end Analytics ────────────────────────────────────────────────
 
+// ─── Chat ─────────────────────────────────────────────────────────
+
+const CHAT_MAX_MSGS  = 200;
+const CHAT_USER_TTL  = 30 * 24 * 3600;   // 30 days
+const KEY_CHAT_USERS = "chat:users";
+
+const keyChatUser = (ip) => `chat:user:${ip}`;
+const keyChatMsgs = (ip) => `chat:msgs:${ip}`;
+
+// SSE client sets
+const chatAdminClients = new Set();
+const chatUserClients  = new Map();   // ip → Set<res>
+
+function broadcastChatAdmin(type, data) {
+  if (!chatAdminClients.size) return;
+  const msg = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const res of chatAdminClients) {
+    try { res.write(msg); } catch { chatAdminClients.delete(res); }
+  }
+}
+function broadcastChatUser(ip, type, data) {
+  const clients = chatUserClients.get(ip);
+  if (!clients?.size) return;
+  const msg = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const res of clients) {
+    try { res.write(msg); } catch { clients.delete(res); }
+  }
+}
+
+// Google Translate unofficial — free, no API key
+async function translateText(text, from, to) {
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${from}&tl=${to}&dt=t&q=${encodeURIComponent(text)}`;
+    const r   = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+    const d   = await r.json();
+    return (d[0] || []).map(x => x?.[0] || "").join("") || text;
+  } catch { return text; }
+}
+
+function getChatIP(req) {
+  return (req.headers["x-forwarded-for"] || "").split(",")[0].trim()
+    || req.headers["x-real-ip"] || req.socket.remoteAddress || "unknown";
+}
+
+// ── Serve chat-widget.js ─────────────────────────────────────────
+app.get("/chat-widget.js", (req, res) => {
+  res.setHeader("Content-Type", "application/javascript");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.sendFile(path.join(__dirname, "chat-widget.js"));
+});
+
+// ── Admin SSE stream ─────────────────────────────────────────────
+app.get("/chat/stream/admin", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+  res.write("event: connected\ndata: {}\n\n");
+  chatAdminClients.add(res);
+  req.on("close", () => chatAdminClients.delete(res));
+});
+
+// ── User SSE stream (identified by IP) ──────────────────────────
+app.get("/chat/stream/user", (req, res) => {
+  const ip = getChatIP(req);
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.flushHeaders();
+  res.write(`event: connected\ndata: ${JSON.stringify({ ip })}\n\n`);
+
+  if (!chatUserClients.has(ip)) chatUserClients.set(ip, new Set());
+  chatUserClients.get(ip).add(res);
+  broadcastChatAdmin("user-online", { ip });
+
+  req.on("close", () => {
+    const c = chatUserClients.get(ip);
+    if (c) { c.delete(res); if (!c.size) chatUserClients.delete(ip); }
+    broadcastChatAdmin("user-offline", { ip });
+    redis.hset(keyChatUser(ip), "lastSeen", Date.now()).catch(() => {});
+  });
+});
+
+// ── User sends message ───────────────────────────────────────────
+app.post("/chat/send", async (req, res) => {
+  try {
+    const ip = getChatIP(req);
+    const { message, name } = req.body || {};
+    if (!message?.trim()) return res.status(400).json({ error: "message required" });
+
+    const now = Date.now();
+    const id  = now.toString(36) + Math.random().toString(36).slice(2, 6);
+
+    // Auto-detect Japanese and translate to English for admin
+    const isJP      = /[぀-ヿ㐀-䶿一-鿿＀-￯]/.test(message);
+    const translated = isJP ? await translateText(message, "ja", "en") : null;
+
+    const msg = { id, role: "user", text: message, translated, timestamp: now, read: false };
+
+    // Store message
+    await redis.rpush(keyChatMsgs(ip), JSON.stringify(msg));
+    await redis.ltrim(keyChatMsgs(ip), -CHAT_MAX_MSGS, -1);
+    await redis.expire(keyChatMsgs(ip), CHAT_USER_TTL);
+
+    // Upsert user record
+    const existed    = await redis.exists(keyChatUser(ip));
+    const prevUnread = existed ? (Number(await redis.hget(keyChatUser(ip), "unread")) || 0) : 0;
+    const storedName = existed ? (await redis.hget(keyChatUser(ip), "name") || "") : "";
+    await redis.hmset(keyChatUser(ip), {
+      ip,
+      name:        name || storedName,
+      lastMessage: message.slice(0, 120),
+      lastActive:  now,
+      lastSeen:    now,
+      unread:      prevUnread + 1,
+    });
+    await redis.expire(keyChatUser(ip), CHAT_USER_TTL);
+    await redis.zadd(KEY_CHAT_USERS, now, ip);
+
+    const user = await redis.hgetall(keyChatUser(ip));
+    broadcastChatAdmin("message", { ip, message: msg, user });
+
+    res.json({ ok: true, id });
+  } catch (err) {
+    console.error("[chat/send]", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Admin sends message ──────────────────────────────────────────
+app.post("/chat/admin/send", async (req, res) => {
+  try {
+    const { ip, message, translateToJP } = req.body || {};
+    if (!ip || !message?.trim()) return res.status(400).json({ error: "ip and message required" });
+
+    const now       = Date.now();
+    const id        = now.toString(36) + Math.random().toString(36).slice(2, 6);
+    const finalText = translateToJP ? await translateText(message, "en", "ja") : message;
+    const msg       = {
+      id, role: "admin",
+      text: finalText,
+      originalText: translateToJP ? message : null,
+      timestamp: now,
+    };
+
+    await redis.rpush(keyChatMsgs(ip), JSON.stringify(msg));
+    await redis.ltrim(keyChatMsgs(ip), -CHAT_MAX_MSGS, -1);
+    await redis.expire(keyChatMsgs(ip), CHAT_USER_TTL);
+    await redis.hset(keyChatUser(ip), "lastAdminReply", now);
+
+    broadcastChatUser(ip, "message", { message: msg });
+    broadcastChatAdmin("admin-message", { ip, message: msg });  // sync other admin tabs
+
+    res.json({ ok: true, id, message: msg });
+  } catch (err) {
+    console.error("[chat/admin/send]", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Get message history ──────────────────────────────────────────
+app.get("/chat/messages/:ip", async (req, res) => {
+  try {
+    const ip  = decodeURIComponent(req.params.ip);
+    const raw = await redis.lrange(keyChatMsgs(ip), 0, -1);
+    const messages = raw.map(r => { try { return JSON.parse(r); } catch { return null; } }).filter(Boolean);
+    res.json({ messages });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Get all chat users (admin contact list) ──────────────────────
+app.get("/chat/users", async (req, res) => {
+  try {
+    const ips = await redis.zrevrange(KEY_CHAT_USERS, 0, 49);
+    const pipeline = redis.pipeline();
+    for (const ip of ips) pipeline.hgetall(keyChatUser(ip));
+    const results = await pipeline.exec();
+    const users = results
+      .map(([, u]) => u)
+      .filter(Boolean)
+      .map(u => ({
+        ...u,
+        isOnline: chatUserClients.has(u.ip) && chatUserClients.get(u.ip).size > 0,
+      }));
+    res.json({ users });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Mark conversation as read ────────────────────────────────────
+app.post("/chat/read/:ip", async (req, res) => {
+  try {
+    const ip = decodeURIComponent(req.params.ip);
+    await redis.hset(keyChatUser(ip), "unread", 0);
+    broadcastChatAdmin("read", { ip });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Typing indicators ────────────────────────────────────────────
+app.post("/chat/typing", async (req, res) => {
+  const ip = getChatIP(req);
+  broadcastChatAdmin("typing", { ip, role: "user" });
+  res.json({ ok: true });
+});
+
+app.post("/chat/admin/typing", async (req, res) => {
+  const { ip } = req.body || {};
+  if (ip) broadcastChatUser(ip, "typing", { role: "admin" });
+  res.json({ ok: true });
+});
+
+// ─── end Chat ─────────────────────────────────────────────────────
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   for (const [group, entries] of Object.entries(ORIGIN_GROUPS)) {
