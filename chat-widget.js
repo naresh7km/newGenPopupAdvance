@@ -175,7 +175,7 @@
       sseConn.addEventListener("message", function (e) {
         var d = JSON.parse(e.data);
         renderMsg(d.message, true);
-        if (!isOpen) bumpUnread();
+        if (!isOpen) openPanel();  // auto-open chat when admin sends a message
       });
 
       sseConn.addEventListener("typing", function () {
