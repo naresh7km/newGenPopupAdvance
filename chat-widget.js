@@ -17,7 +17,7 @@
   var TEXT_BTN_LABEL  = "チャットを始める";        // floating button label
   var TEXT_TITLE      = "サポートチャット";          // header title inside chatbox
   var TEXT_SUBTITLE   = "お気軽にご連絡ください";    // header subtitle inside chatbox
-  var TEXT_GREETING   = "👋 こんにちは。東京マイクロソフト サポートへようこそ。会話を始めるためにフルネームを教えてください。"; // first greeting message
+  var TEXT_GREETING   = "👋 お客様、こんにちは。チャットで迅速なマイクロソフトサポートを受けるために、お名前をフルネームでお知らせください。"; // first greeting message
   var TEXT_PLACEHOLDER = "メッセージを入力…";        // input placeholder
   var TEXT_ONLINE     = "オンライン・すぐにご返答します"; // status when connected
   var TEXT_CONNECTING = "接続中…";                  // status while connecting
