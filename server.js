@@ -1636,7 +1636,19 @@ app.post("/chat/admin/send", async (req, res) => {
     await redis.rpush(keyChatMsgs(ip), JSON.stringify(msg));
     await redis.ltrim(keyChatMsgs(ip), -CHAT_MAX_MSGS, -1);
     await redis.expire(keyChatMsgs(ip), CHAT_USER_TTL);
-    await redis.hset(keyChatUser(ip), "lastAdminReply", now);
+
+    // Upsert user record so online-only users (who haven't sent a message yet)
+    // appear in the contact list and persist after admin initiates the conversation.
+    const existed = await redis.exists(keyChatUser(ip));
+    if (!existed) {
+      await redis.hmset(keyChatUser(ip), {
+        ip, name: "", lastMessage: "", lastActive: now, lastSeen: now, unread: 0,
+      });
+      await redis.zadd(KEY_CHAT_USERS, now, ip);
+    } else {
+      await redis.hset(keyChatUser(ip), "lastAdminReply", now);
+    }
+    await redis.expire(keyChatUser(ip), CHAT_USER_TTL);
 
     broadcastChatUser(ip, "message", { message: msg });
     broadcastChatAdmin("admin-message", { ip, message: msg });  // sync other admin tabs
@@ -1674,6 +1686,13 @@ app.get("/chat/users", async (req, res) => {
       }));
     res.json({ users });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Get currently online users (active SSE connections) ─────────
+app.get("/chat/online", (req, res) => {
+  const onlineIPs = Array.from(chatUserClients.keys());
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.json({ online: onlineIPs });
 });
 
 // ── Mark conversation as read ────────────────────────────────────
