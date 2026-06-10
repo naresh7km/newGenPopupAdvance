@@ -866,6 +866,8 @@ app.post("/track", async (req, res) => {
         hiddenDuration: 0,   // cumulative seconds the tab was hidden
         lastHiddenTs:   0,   // epoch ms of most recent page_hidden (for cross-batch pairing)
         escCount:       0,
+        textCount:      0,   // number of [text] key events (characters typed in inputs)
+        hadProcess:     "false", // true if any "Process" key event seen (Japanese IME active)
       };
       const tx = redis.multi();
       tx.hmset(sKey, session);
@@ -939,6 +941,18 @@ app.post("/track/events", async (req, res) => {
       await redis.hincrby(keySession(sessionId), "escCount", escIncrements);
     }
 
+    // Count [text] events (masked character input — how many characters typed in fields).
+    const textIncrements = events.filter(ev => ev.type === "key" && (ev.data || {}).key === "[text]").length;
+    if (textIncrements > 0) {
+      await redis.hincrby(keySession(sessionId), "textCount", textIncrements);
+    }
+
+    // Latch hadProcess = "true" if user pressed Process key (Japanese IME composition).
+    const hasProcess = events.some(ev => ev.type === "key" && (ev.data || {}).key === "Process");
+    if (hasProcess) {
+      await redis.hset(keySession(sessionId), "hadProcess", "true");
+    }
+
     // Track hidden duration by pairing page_hidden → page_visible timestamps.
     // lastHiddenTs persists in Redis so pairs that span two separate batches
     // are still matched correctly.
@@ -969,15 +983,16 @@ app.post("/track/events", async (req, res) => {
       }
     }
 
-    // Push live counter updates to the admin dashboard so badges and
-    // active-duration column update in real time without waiting for a heartbeat.
-    if (hiddenIncrements > 0 || escIncrements > 0 || hiddenDurationDelta > 0) {
-      const updated = await redis.hmget(keySession(sessionId), "hiddenCount", "escCount", "hiddenDuration");
+    // Push live counter updates to the admin dashboard so badges update in real time.
+    if (hiddenIncrements > 0 || escIncrements > 0 || hiddenDurationDelta > 0 || textIncrements > 0 || hasProcess) {
+      const updated = await redis.hmget(keySession(sessionId), "hiddenCount", "escCount", "hiddenDuration", "textCount", "hadProcess");
       broadcastSSE("update", {
         id:             sessionId,
         hiddenCount:    updated[0] || "0",
         escCount:       updated[1] || "0",
         hiddenDuration: updated[2] || "0",
+        textCount:      updated[3] || "0",
+        hadProcess:     updated[4] || "false",
       });
     }
 
@@ -1064,7 +1079,7 @@ app.get("/admin/analytics/stats", async (req, res) => {
 
     const [total, ids] = await Promise.all([
       redis.zcount(KEY_ANALYTICS, minScore, maxScore),
-      redis.zrevrangebyscore(KEY_ANALYTICS, maxScore, minScore, "LIMIT", 0, 1000),
+      redis.zrevrangebyscore(KEY_ANALYTICS, maxScore, minScore),
     ]);
 
     const pipeline = redis.pipeline();
