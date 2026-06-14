@@ -8,9 +8,12 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@aws-sdk/client-amplify": "^3.1032.0",
     "@aws-sdk/client-s3": "^3.1032.0",
     "@aws-sdk/client-s3-control": "^3.1032.0",
+    "@aws-sdk/client-wafv2": "^3.1032.0",
     "@aws-sdk/s3-request-presigner": "^3.1032.0",
+    "adm-zip": "^0.5.10",
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
     "dotenv": "^17.4.2",
