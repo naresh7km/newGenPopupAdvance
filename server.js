@@ -1884,30 +1884,27 @@ async function createAndDeployApp(label, zipBuf, state, stepIdxBase, onProgress)
 async function attachAndVerifyWaf(appId, wafArn, onProgress, stepIdx) {
   const resourceArn = `arn:aws:amplify:${AMPLIFY_REGION}:${ACCOUNT_ID}:apps/${appId}`;
 
-  for (let attempt = 1; attempt <= 10; attempt++) {
-    try {
-      await onProgress(stepIdx, 'in_progress', attempt > 1 ? `Attempt ${attempt}…` : 'Attaching…');
-      await wafClient.send(new AssociateWebACLCommand({ WebACLArn: wafArn, ResourceArn: resourceArn }));
-      await onProgress(stepIdx, 'completed', attempt > 1 ? `succeeded on attempt ${attempt}` : null);
-      break;
-    } catch (err) {
-      if (attempt === 10) throw new Error(`WAF attachment failed after 10 attempts: ${err.message}`);
-      await onProgress(stepIdx, 'in_progress', `Attempt ${attempt} failed — retrying in 30s…`);
-      await new Promise(r => setTimeout(r, 30_000));
-    }
+  // Attach WAF once — fail immediately if it errors
+  await onProgress(stepIdx, 'in_progress', 'Attaching…');
+  try {
+    await wafClient.send(new AssociateWebACLCommand({ WebACLArn: wafArn, ResourceArn: resourceArn }));
+  } catch (err) {
+    throw new Error(`WAF attachment failed: ${err.message}`);
   }
+  await onProgress(stepIdx, 'completed');
 
+  // Poll for confirmation every 30s, up to 10 attempts (5 min total)
   await onProgress(stepIdx + 1, 'in_progress', 'Polling…');
-  for (let i = 1; i <= 30; i++) {
-    await new Promise(r => setTimeout(r, 20_000));
+  for (let i = 1; i <= 10; i++) {
+    await new Promise(r => setTimeout(r, 30_000));
     let attached = null;
     try {
       const r = await wafClient.send(new GetWebACLForResourceCommand({ ResourceArn: resourceArn }));
       attached = r.WebACL?.ARN || null;
     } catch { /* not attached yet */ }
-    await onProgress(stepIdx + 1, 'in_progress', `[${i}/30] ${attached || 'none'}`);
-    if (attached === wafArn) { await onProgress(stepIdx + 1, 'completed', `after ${i * 20}s`); return; }
-    if (i === 30) throw new Error(`WAF verification timed out`);
+    await onProgress(stepIdx + 1, 'in_progress', `[${i}/10] ${attached || 'none'}`);
+    if (attached === wafArn) { await onProgress(stepIdx + 1, 'completed', `after ${i * 30}s`); return; }
+    if (i === 10) throw new Error(`WAF verification timed out after 5 min`);
   }
 }
 
