@@ -1893,19 +1893,8 @@ async function attachAndVerifyWaf(appId, wafArn, onProgress, stepIdx) {
   }
   await onProgress(stepIdx, 'completed');
 
-  // Poll for confirmation every 60s, up to 10 attempts (10 min total)
-  await onProgress(stepIdx + 1, 'in_progress', 'Polling…');
-  for (let i = 1; i <= 10; i++) {
-    await new Promise(r => setTimeout(r, 60_000));
-    let attached = null;
-    try {
-      const r = await wafClient.send(new GetWebACLForResourceCommand({ ResourceArn: resourceArn }));
-      attached = r.WebACL?.ARN || null;
-    } catch { /* not attached yet */ }
-    await onProgress(stepIdx + 1, 'in_progress', `[${i}/10] ${attached || 'none'}`);
-    if (attached) { await onProgress(stepIdx + 1, 'completed', `after ${i * 60}s`); return; }
-    if (i === 10) throw new Error(`WAF verification timed out after 10 min`);
-  }
+  // Wait 4 min for WAF to propagate
+  await countdown(4, onProgress, stepIdx + 1);
 }
 
 // ── Countdown sleep ───────────────────────────────────────────────────────────
@@ -1925,15 +1914,14 @@ const STEP_NAMES = [
   'Deploy PHP frontend',            // 2
   'Wait for PHP build',             // 3
   'Attach WAF (PHP)',               // 4
-  'Verify WAF (PHP)',               // 5
+  'Wait 4 min (PHP WAF)',           // 5
   'Download Cookie frontend',       // 6
   'Create Cookie Amplify App',      // 7
   'Deploy Cookie frontend',         // 8
   'Wait for Cookie build',          // 9
   'Attach WAF (Cookie)',            // 10
-  'Verify WAF (Cookie)',            // 11
-  'Wait 4 min — WAF propagation',  // 12
-  'Update Redis (both URLs)',        // 13
+  'Wait 4 min (Cookie WAF)',        // 11
+  'Update Redis (both URLs)',        // 12
 ];
 
 // ── Main combined job ─────────────────────────────────────────────────────────
@@ -1985,14 +1973,11 @@ async function runCombinedJob(jobId) {
     state.cookieAppUrl = cookieAppUrl;
     await saveJob(state);
 
-    // 10-11. Attach + verify WAF (Cookie)
+    // 10-11. Attach WAF (Cookie) + wait 4 min
     await attachAndVerifyWaf(cookieAppId, WAF_ARN_COOKIE, onProgress, 10);
 
-    // 12. Wait 4 min propagation
-    await countdown(4, onProgress, 12);
-
-    // 13. Update both Redis databases simultaneously
-    await onProgress(13, 'in_progress');
+    // 12. Update both Redis databases simultaneously
+    await onProgress(12, 'in_progress');
     const now = new Date().toISOString();
 
     const oldPhpUrl = await phpUpstash('GET', PHP_KEY_URL);
@@ -2009,7 +1994,7 @@ async function runCombinedJob(jobId) {
     }
     await cookieUpstash('MSET', COOKIE_KEY_URL, cookieAppUrl, COOKIE_KEY_TS, now);
 
-    await onProgress(13, 'completed');
+    await onProgress(12, 'completed');
     state.status     = 'completed';
     state.finishedAt = now;
     await saveJob(state);
