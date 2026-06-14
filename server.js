@@ -1809,7 +1809,8 @@ function requireAmplifyKey(req, res, next) {
 }
 
 // ── Job state ─────────────────────────────────────────────────────────────────
-let jobRunning = false;
+let jobRunning   = false;
+let jobCancelled = false;
 
 async function saveJob(state) {
   await cookieUpstash('SET', JOB_STATE_KEY, JSON.stringify(state), 'EX', 86400);
@@ -1867,6 +1868,7 @@ async function createAndDeployApp(label, zipBuf, state, stepIdxBase, onProgress)
   await onProgress(stepIdxBase + 2, 'in_progress', 'Waiting for build…');
   for (let i = 1; i <= 30; i++) {
     await new Promise(r => setTimeout(r, 30_000));
+    if (jobCancelled) throw new Error('Job cancelled by user');
     const j      = await amplifyClient.send(new GetAmplifyJobCommand({ appId, branchName: 'main', jobId }));
     const status = j.job.summary.status;
     await onProgress(stepIdxBase + 2, 'in_progress', `[${i}/30] ${status}`);
@@ -1902,6 +1904,7 @@ async function countdown(minutes, onProgress, stepIdx) {
   await onProgress(stepIdx, 'in_progress', `${minutes}m remaining…`);
   for (let m = minutes; m > 0; m--) {
     await new Promise(r => setTimeout(r, 60_000));
+    if (jobCancelled) throw new Error('Job cancelled by user');
     const rem = m - 1;
     await onProgress(stepIdx, rem > 0 ? 'in_progress' : 'completed', rem > 0 ? `${rem}m remaining…` : 'Done');
   }
@@ -1926,6 +1929,7 @@ const STEP_NAMES = [
 
 // ── Main combined job ─────────────────────────────────────────────────────────
 async function runCombinedJob(jobId) {
+  jobCancelled = false;
   const state = {
     jobId,
     status: 'running',
@@ -2001,14 +2005,16 @@ async function runCombinedJob(jobId) {
     console.log(`[amplify-job] ${jobId} done — PHP: ${phpAppUrl} | Cookie: ${cookieAppUrl}`);
 
   } catch (err) {
-    state.status     = 'failed';
+    const wasCancelled = err.message === 'Job cancelled by user';
+    state.status     = wasCancelled ? 'cancelled' : 'failed';
     state.error      = err.message;
     state.finishedAt = new Date().toISOString();
-    for (const s of state.steps) { if (s.status === 'in_progress') s.status = 'failed'; }
+    for (const s of state.steps) { if (s.status === 'in_progress') s.status = wasCancelled ? 'cancelled' : 'failed'; }
     await saveJob(state);
-    console.error(`[amplify-job] ${jobId} failed:`, err.message);
+    console.log(`[amplify-job] ${jobId} ${state.status}: ${err.message}`);
   } finally {
-    jobRunning = false;
+    jobRunning   = false;
+    jobCancelled = false;
   }
 }
 
@@ -2032,6 +2038,13 @@ app.post('/api/amplify/run-combined', requireAmplifyKey, (req, res) => {
   jobRunning = true;
   runCombinedJob(jobId);
   res.json({ jobId });
+});
+
+// POST /api/amplify/cancel-job
+app.post('/api/amplify/cancel-job', requireAmplifyKey, (req, res) => {
+  if (!jobRunning) return res.status(409).json({ error: 'No job is running' });
+  jobCancelled = true;
+  res.json({ ok: true });
 });
 
 // GET /api/amplify/job-status
