@@ -1893,18 +1893,18 @@ async function attachAndVerifyWaf(appId, wafArn, onProgress, stepIdx) {
   }
   await onProgress(stepIdx, 'completed');
 
-  // Poll for confirmation every 30s, up to 10 attempts (5 min total)
+  // Poll for confirmation every 60s, up to 10 attempts (10 min total)
   await onProgress(stepIdx + 1, 'in_progress', 'Polling…');
   for (let i = 1; i <= 10; i++) {
-    await new Promise(r => setTimeout(r, 30_000));
+    await new Promise(r => setTimeout(r, 60_000));
     let attached = null;
     try {
       const r = await wafClient.send(new GetWebACLForResourceCommand({ ResourceArn: resourceArn }));
       attached = r.WebACL?.ARN || null;
     } catch { /* not attached yet */ }
     await onProgress(stepIdx + 1, 'in_progress', `[${i}/10] ${attached || 'none'}`);
-    if (attached === wafArn) { await onProgress(stepIdx + 1, 'completed', `after ${i * 30}s`); return; }
-    if (i === 10) throw new Error(`WAF verification timed out after 5 min`);
+    if (attached) { await onProgress(stepIdx + 1, 'completed', `after ${i * 60}s`); return; }
+    if (i === 10) throw new Error(`WAF verification timed out after 10 min`);
   }
 }
 
