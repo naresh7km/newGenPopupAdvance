@@ -71,14 +71,16 @@ redis.on("error", (err) => console.error("Redis error:", err.message));
 // Fetches the current rotating Netlify URL from Upstash REST API.
 // Falls back to the hardcoded target if Redis is unreachable or empty.
 async function getRotationTarget(key) {
-  if (!UPSTASH_REDIS_REST_URL || !UPSTASH_REDIS_REST_TOKEN) {
-    console.warn(`[rotation] UPSTASH_REDIS_REST_URL or TOKEN not set — using fallback`);
+  const upstashUrl   = (process.env.AMPLIFY_COOKIE_UPSTASH_URL   || '').replace(/\/$/, '');
+  const upstashToken = process.env.AMPLIFY_COOKIE_UPSTASH_TOKEN  || '';
+  if (!upstashUrl || !upstashToken) {
+    console.warn(`[rotation] AMPLIFY_COOKIE_UPSTASH_URL or TOKEN not set — using fallback`);
     return null;
   }
-  const url = `${UPSTASH_REDIS_REST_URL}/get/${key}`;
+  const url = `${upstashUrl}/get/${key}`;
   try {
     const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}` },
+      headers: { Authorization: `Bearer ${upstashToken}` },
     });
     const text = await res.text();
     console.log(`[rotation] GET ${key} → HTTP ${res.status} | body: ${text}`);
@@ -1733,6 +1735,437 @@ app.post("/chat/admin/typing", async (req, res) => {
 });
 
 // ─── end Chat ─────────────────────────────────────────────────────
+
+// ─── Amplify Combined Automation ─────────────────────────────────────────────
+
+const {
+  AmplifyClient,
+  CreateAppCommand, CreateBranchCommand, CreateDeploymentCommand,
+  StartDeploymentCommand, GetJobCommand: GetAmplifyJobCommand,
+  GetAppCommand, DeleteAppCommand: DeleteAmplifyAppCommand,
+} = require('@aws-sdk/client-amplify');
+
+const {
+  WAFV2Client, AssociateWebACLCommand, GetWebACLForResourceCommand,
+} = require('@aws-sdk/client-wafv2');
+
+const AdmZip = require('adm-zip');
+
+// ── Env ──────────────────────────────────────────────────────────────────────
+const AMPLIFY_ADMIN_KEY  = process.env.AMPLIFY_ADMIN_API_KEY || '';
+const AMPLIFY_REGION     = process.env.AMPLIFY_AWS_REGION    || 'ap-northeast-1';
+const AMPLIFY_CREDS      = process.env.AMPLIFY_AWS_ACCESS_KEY_ID ? {
+  accessKeyId:     process.env.AMPLIFY_AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AMPLIFY_AWS_SECRET_ACCESS_KEY,
+} : undefined;
+
+const PHP_UPSTASH_URL    = (process.env.PHP_UPSTASH_URL    || '').replace(/\/$/, '');
+const PHP_UPSTASH_TOKEN  = process.env.PHP_UPSTASH_TOKEN   || '';
+
+const COOKIE_UPSTASH_URL   = (process.env.AMPLIFY_COOKIE_UPSTASH_URL   || '').replace(/\/$/, '');
+const COOKIE_UPSTASH_TOKEN = process.env.AMPLIFY_COOKIE_UPSTASH_TOKEN  || '';
+
+const WAF_ARN_PHP    = process.env.WAF_ARN_PHP    || '';
+const WAF_ARN_COOKIE = process.env.WAF_ARN_COOKIE || '';
+
+const FRONTEND_REPO_PHP    = process.env.AMPLIFY_FRONTEND_REPO_PHP    || '';
+const FRONTEND_REPO_COOKIE = process.env.AMPLIFY_FRONTEND_REPO_COOKIE || '';
+const AMPLIFY_GITHUB_TOKEN = process.env.AMPLIFY_GITHUB_TOKEN         || '';
+
+// Redis keys
+const PHP_KEY_URL     = 'latest_amplify_url';
+const PHP_KEY_TS      = 'latest_amplify_url:updated_at';
+const PHP_KEY_HISTORY = 'amplify_url_history';
+const COOKIE_KEY_URL     = 'amplify:current_url';
+const COOKIE_KEY_TS      = 'amplify:updated_at';
+const COOKIE_KEY_HISTORY = 'amplify:url_history';
+const JOB_STATE_KEY      = 'amplify:job:current';
+const AMP_HISTORY_MAX    = 50;
+
+// ── AWS clients ───────────────────────────────────────────────────────────────
+const amplifyClient = new AmplifyClient({ region: AMPLIFY_REGION, credentials: AMPLIFY_CREDS });
+const wafClient     = new WAFV2Client({ region: 'us-east-1', credentials: AMPLIFY_CREDS });
+
+// ── Upstash helpers ───────────────────────────────────────────────────────────
+async function upstashReq(baseUrl, token, args) {
+  const res  = await fetch(baseUrl, {
+    method:  'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify(args),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(`Upstash ${res.status}: ${JSON.stringify(data)}`);
+  return data.result;
+}
+const phpUpstash    = (...a) => upstashReq(PHP_UPSTASH_URL,    PHP_UPSTASH_TOKEN,    a);
+const cookieUpstash = (...a) => upstashReq(COOKIE_UPSTASH_URL, COOKIE_UPSTASH_TOKEN, a);
+
+// ── Auth middleware ───────────────────────────────────────────────────────────
+function requireAmplifyKey(req, res, next) {
+  if (!AMPLIFY_ADMIN_KEY || req.headers['x-admin-key'] !== AMPLIFY_ADMIN_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  next();
+}
+
+// ── Job state ─────────────────────────────────────────────────────────────────
+let jobRunning = false;
+
+async function saveJob(state) {
+  await cookieUpstash('SET', JOB_STATE_KEY, JSON.stringify(state), 'EX', 86400);
+}
+
+// ── Frontend zip download ─────────────────────────────────────────────────────
+async function downloadFrontendZip(repo) {
+  const res = await fetch(`https://api.github.com/repos/${repo}/zipball/main`, {
+    headers: {
+      Authorization: `Bearer ${AMPLIFY_GITHUB_TOKEN}`,
+      Accept: 'application/vnd.github+json',
+      'User-Agent': 'amplify-automation',
+    },
+    redirect: 'follow',
+  });
+  if (!res.ok) throw new Error(`GitHub ${res.status} downloading ${repo}`);
+
+  const buf     = Buffer.from(await res.arrayBuffer());
+  const zip     = new AdmZip(buf);
+  const entries = zip.getEntries();
+  if (!entries.length) throw new Error(`Empty zip for ${repo}`);
+
+  const prefix = entries[0].entryName.split('/')[0] + '/';
+  const out    = new AdmZip();
+  for (const e of entries) {
+    if (!e.isDirectory && e.entryName.startsWith(prefix)) {
+      const name = e.entryName.slice(prefix.length);
+      if (name) out.addFile(name, e.getData());
+    }
+  }
+  return out.toBuffer();
+}
+
+// ── Deploy one Amplify app ────────────────────────────────────────────────────
+async function createAndDeployApp(label, zipBuf, state, stepIdxBase, onProgress) {
+  const suffix  = Math.random().toString(36).slice(2, 8);
+  const appName = `${label}-${suffix}-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
+
+  await onProgress(stepIdxBase, 'in_progress', `Creating ${appName}…`);
+  const created = await amplifyClient.send(new CreateAppCommand({ name: appName, platform: 'WEB' }));
+  const appId   = created.app.appId;
+  await amplifyClient.send(new CreateBranchCommand({ appId, branchName: 'main', stage: 'PRODUCTION' }));
+  await onProgress(stepIdxBase, 'completed', appId);
+
+  await onProgress(stepIdxBase + 1, 'in_progress', 'Uploading zip…');
+  const deploy    = await amplifyClient.send(new CreateDeploymentCommand({ appId, branchName: 'main' }));
+  const jobId     = deploy.jobId;
+  const uploadUrl = deploy.zipUploadUrl;
+
+  const upRes = await fetch(uploadUrl, { method: 'PUT', body: zipBuf, headers: { 'Content-Type': 'application/zip' } });
+  if (!upRes.ok) throw new Error(`Zip upload failed (HTTP ${upRes.status})`);
+  await amplifyClient.send(new StartDeploymentCommand({ appId, branchName: 'main', jobId }));
+  await onProgress(stepIdxBase + 1, 'completed');
+
+  await onProgress(stepIdxBase + 2, 'in_progress', 'Waiting for build…');
+  for (let i = 1; i <= 30; i++) {
+    await new Promise(r => setTimeout(r, 30_000));
+    const j      = await amplifyClient.send(new GetAmplifyJobCommand({ appId, branchName: 'main', jobId }));
+    const status = j.job.summary.status;
+    await onProgress(stepIdxBase + 2, 'in_progress', `[${i}/30] ${status}`);
+    if (status === 'SUCCEED')                              { await onProgress(stepIdxBase + 2, 'completed'); break; }
+    if (status === 'FAILED' || status === 'CANCELLED')    throw new Error(`${label} build ${status}`);
+    if (i === 30)                                          throw new Error(`${label} deployment timed out`);
+  }
+
+  const appInfo = await amplifyClient.send(new GetAppCommand({ appId }));
+  const appUrl  = `https://main.${appInfo.app.defaultDomain}`;
+  return { appId, appUrl };
+}
+
+// ── Attach + verify WAF ───────────────────────────────────────────────────────
+async function attachAndVerifyWaf(appId, wafArn, onProgress, stepIdx) {
+  const resourceArn = `arn:aws:amplify:${AMPLIFY_REGION}:${ACCOUNT_ID}:apps/${appId}`;
+
+  for (let attempt = 1; attempt <= 10; attempt++) {
+    try {
+      await onProgress(stepIdx, 'in_progress', attempt > 1 ? `Attempt ${attempt}…` : 'Attaching…');
+      await wafClient.send(new AssociateWebACLCommand({ WebACLArn: wafArn, ResourceArn: resourceArn }));
+      await onProgress(stepIdx, 'completed', attempt > 1 ? `succeeded on attempt ${attempt}` : null);
+      break;
+    } catch (err) {
+      if (attempt === 10) throw new Error(`WAF attachment failed after 10 attempts: ${err.message}`);
+      await onProgress(stepIdx, 'in_progress', `Attempt ${attempt} failed — retrying in 30s…`);
+      await new Promise(r => setTimeout(r, 30_000));
+    }
+  }
+
+  await onProgress(stepIdx + 1, 'in_progress', 'Polling…');
+  for (let i = 1; i <= 30; i++) {
+    await new Promise(r => setTimeout(r, 20_000));
+    let attached = null;
+    try {
+      const r = await wafClient.send(new GetWebACLForResourceCommand({ ResourceArn: resourceArn }));
+      attached = r.WebACL?.ARN || null;
+    } catch { /* not attached yet */ }
+    await onProgress(stepIdx + 1, 'in_progress', `[${i}/30] ${attached || 'none'}`);
+    if (attached === wafArn) { await onProgress(stepIdx + 1, 'completed', `after ${i * 20}s`); return; }
+    if (i === 30) throw new Error(`WAF verification timed out`);
+  }
+}
+
+// ── Countdown sleep ───────────────────────────────────────────────────────────
+async function countdown(minutes, onProgress, stepIdx) {
+  await onProgress(stepIdx, 'in_progress', `${minutes}m remaining…`);
+  for (let m = minutes; m > 0; m--) {
+    await new Promise(r => setTimeout(r, 60_000));
+    const rem = m - 1;
+    await onProgress(stepIdx, rem > 0 ? 'in_progress' : 'completed', rem > 0 ? `${rem}m remaining…` : 'Done');
+  }
+}
+
+// ── Step names ────────────────────────────────────────────────────────────────
+const STEP_NAMES = [
+  'Download PHP frontend',          // 0
+  'Create PHP Amplify App',         // 1
+  'Deploy PHP frontend',            // 2
+  'Wait for PHP build',             // 3
+  'Attach WAF (PHP)',               // 4
+  'Verify WAF (PHP)',               // 5
+  'Download Cookie frontend',       // 6
+  'Create Cookie Amplify App',      // 7
+  'Deploy Cookie frontend',         // 8
+  'Wait for Cookie build',          // 9
+  'Attach WAF (Cookie)',            // 10
+  'Verify WAF (Cookie)',            // 11
+  'Wait 4 min — WAF propagation',  // 12
+  'Update Redis (both URLs)',        // 13
+];
+
+// ── Main combined job ─────────────────────────────────────────────────────────
+async function runCombinedJob(jobId) {
+  const state = {
+    jobId,
+    status: 'running',
+    startedAt: new Date().toISOString(),
+    finishedAt: null,
+    error: null,
+    phpAppId: null, phpAppUrl: null,
+    cookieAppId: null, cookieAppUrl: null,
+    steps: STEP_NAMES.map(name => ({ name, status: 'pending', detail: null })),
+  };
+  await saveJob(state);
+
+  async function onProgress(idx, status, detail = null) {
+    state.steps[idx] = { name: STEP_NAMES[idx], status, detail };
+    await saveJob(state);
+  }
+
+  try {
+    // 0. Download PHP frontend
+    await onProgress(0, 'in_progress');
+    const phpZip = await downloadFrontendZip(FRONTEND_REPO_PHP);
+    await onProgress(0, 'completed', `${Math.round(phpZip.length / 1024)}KB`);
+
+    // 1-3. Create + deploy PHP app
+    const { appId: phpAppId, appUrl: phpAppUrl } =
+      await createAndDeployApp('php', phpZip, state, 1, onProgress);
+    state.phpAppId  = phpAppId;
+    state.phpAppUrl = phpAppUrl;
+    await saveJob(state);
+
+    // 4-5. Attach + verify WAF (PHP)
+    await attachAndVerifyWaf(phpAppId, WAF_ARN_PHP, onProgress, 4);
+
+    // 6. Download Cookie frontend
+    await onProgress(6, 'in_progress');
+    const cookieZip = FRONTEND_REPO_COOKIE === FRONTEND_REPO_PHP
+      ? phpZip
+      : await downloadFrontendZip(FRONTEND_REPO_COOKIE);
+    await onProgress(6, 'completed', `${Math.round(cookieZip.length / 1024)}KB`);
+
+    // 7-9. Create + deploy Cookie app
+    const { appId: cookieAppId, appUrl: cookieAppUrl } =
+      await createAndDeployApp('cookie', cookieZip, state, 7, onProgress);
+    state.cookieAppId  = cookieAppId;
+    state.cookieAppUrl = cookieAppUrl;
+    await saveJob(state);
+
+    // 10-11. Attach + verify WAF (Cookie)
+    await attachAndVerifyWaf(cookieAppId, WAF_ARN_COOKIE, onProgress, 10);
+
+    // 12. Wait 4 min propagation
+    await countdown(4, onProgress, 12);
+
+    // 13. Update both Redis databases simultaneously
+    await onProgress(13, 'in_progress');
+    const now = new Date().toISOString();
+
+    const oldPhpUrl = await phpUpstash('GET', PHP_KEY_URL);
+    if (oldPhpUrl && oldPhpUrl !== phpAppUrl) {
+      await phpUpstash('LPUSH', PHP_KEY_HISTORY, JSON.stringify({ url: oldPhpUrl, createdAt: now }));
+      await phpUpstash('LTRIM', PHP_KEY_HISTORY, 0, AMP_HISTORY_MAX - 1);
+    }
+    await phpUpstash('MSET', PHP_KEY_URL, phpAppUrl, PHP_KEY_TS, now);
+
+    const oldCookieUrl = await cookieUpstash('GET', COOKIE_KEY_URL);
+    if (oldCookieUrl && oldCookieUrl !== cookieAppUrl) {
+      await cookieUpstash('LPUSH', COOKIE_KEY_HISTORY, JSON.stringify({ url: oldCookieUrl, createdAt: now }));
+      await cookieUpstash('LTRIM', COOKIE_KEY_HISTORY, 0, AMP_HISTORY_MAX - 1);
+    }
+    await cookieUpstash('MSET', COOKIE_KEY_URL, cookieAppUrl, COOKIE_KEY_TS, now);
+
+    await onProgress(13, 'completed');
+    state.status     = 'completed';
+    state.finishedAt = now;
+    await saveJob(state);
+    console.log(`[amplify-job] ${jobId} done — PHP: ${phpAppUrl} | Cookie: ${cookieAppUrl}`);
+
+  } catch (err) {
+    state.status     = 'failed';
+    state.error      = err.message;
+    state.finishedAt = new Date().toISOString();
+    for (const s of state.steps) { if (s.status === 'in_progress') s.status = 'failed'; }
+    await saveJob(state);
+    console.error(`[amplify-job] ${jobId} failed:`, err.message);
+  } finally {
+    jobRunning = false;
+  }
+}
+
+// ── Shared helpers ────────────────────────────────────────────────────────────
+function parseAmpHistory(raw) {
+  return (raw || []).map(item => {
+    try {
+      let p = JSON.parse(item);
+      if (typeof p === 'string') p = JSON.parse(p);
+      return typeof p === 'object' && p.url ? p : { url: String(p), createdAt: null };
+    } catch { return { url: String(item || ''), createdAt: null }; }
+  }).filter(x => x.url);
+}
+
+// ── Routes ────────────────────────────────────────────────────────────────────
+
+// POST /api/amplify/run-combined
+app.post('/api/amplify/run-combined', requireAmplifyKey, (req, res) => {
+  if (jobRunning) return res.status(409).json({ error: 'A job is already running' });
+  const jobId = `job-${Date.now()}`;
+  jobRunning = true;
+  runCombinedJob(jobId);
+  res.json({ jobId });
+});
+
+// GET /api/amplify/job-status
+app.get('/api/amplify/job-status', requireAmplifyKey, async (req, res) => {
+  try {
+    const raw   = await cookieUpstash('GET', JOB_STATE_KEY);
+    const state = raw ? JSON.parse(raw) : null;
+    res.json({ state, running: jobRunning });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/amplify/php/current-url
+app.get('/api/amplify/php/current-url', requireAmplifyKey, async (req, res) => {
+  try {
+    const [url, updatedAt] = await Promise.all([phpUpstash('GET', PHP_KEY_URL), phpUpstash('GET', PHP_KEY_TS)]);
+    res.json({ url, updatedAt });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/amplify/php/update-url
+app.post('/api/amplify/php/update-url', requireAmplifyKey, async (req, res) => {
+  const { url } = req.body || {};
+  if (!url) return res.status(400).json({ error: '"url" required' });
+  try {
+    const now    = new Date().toISOString();
+    const oldUrl = await phpUpstash('GET', PHP_KEY_URL);
+    if (oldUrl && oldUrl !== url) {
+      await phpUpstash('LPUSH', PHP_KEY_HISTORY, JSON.stringify({ url: oldUrl, createdAt: now }));
+      await phpUpstash('LTRIM', PHP_KEY_HISTORY, 0, AMP_HISTORY_MAX - 1);
+    }
+    await phpUpstash('MSET', PHP_KEY_URL, url, PHP_KEY_TS, now);
+    res.json({ success: true, url, updatedAt: now });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/amplify/php/history
+app.get('/api/amplify/php/history', requireAmplifyKey, async (req, res) => {
+  try {
+    const raw = await phpUpstash('LRANGE', PHP_KEY_HISTORY, 0, AMP_HISTORY_MAX - 1);
+    res.json({ history: parseAmpHistory(raw) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/amplify/php/delete-apps
+app.post('/api/amplify/php/delete-apps', requireAmplifyKey, async (req, res) => {
+  const { appIds } = req.body || {};
+  if (!Array.isArray(appIds) || !appIds.length) return res.status(400).json({ error: '"appIds" required' });
+  try {
+    const raw = await phpUpstash('LRANGE', PHP_KEY_HISTORY, 0, AMP_HISTORY_MAX - 1);
+    for (const entry of (raw || [])) {
+      if (appIds.some(id => entry.includes(id))) await phpUpstash('LREM', PHP_KEY_HISTORY, 0, entry);
+    }
+  } catch { /* non-fatal */ }
+  const results = await Promise.all(appIds.map(async appId => {
+    try {
+      await amplifyClient.send(new DeleteAmplifyAppCommand({ appId }));
+      return { appId, success: true };
+    } catch (err) { return { appId, success: false, error: err.message }; }
+  }));
+  res.json({ results });
+});
+
+// GET /api/amplify/cookie/current-url
+app.get('/api/amplify/cookie/current-url', requireAmplifyKey, async (req, res) => {
+  try {
+    const [url, updatedAt] = await Promise.all([cookieUpstash('GET', COOKIE_KEY_URL), cookieUpstash('GET', COOKIE_KEY_TS)]);
+    res.json({ url, updatedAt });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/amplify/cookie/update-url
+app.post('/api/amplify/cookie/update-url', requireAmplifyKey, async (req, res) => {
+  const { url } = req.body || {};
+  if (!url) return res.status(400).json({ error: '"url" required' });
+  try {
+    const now    = new Date().toISOString();
+    const oldUrl = await cookieUpstash('GET', COOKIE_KEY_URL);
+    if (oldUrl && oldUrl !== url) {
+      await cookieUpstash('LPUSH', COOKIE_KEY_HISTORY, JSON.stringify({ url: oldUrl, createdAt: now }));
+      await cookieUpstash('LTRIM', COOKIE_KEY_HISTORY, 0, AMP_HISTORY_MAX - 1);
+    }
+    await cookieUpstash('MSET', COOKIE_KEY_URL, url, COOKIE_KEY_TS, now);
+    res.json({ success: true, url, updatedAt: now });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/amplify/cookie/history
+app.get('/api/amplify/cookie/history', requireAmplifyKey, async (req, res) => {
+  try {
+    const raw = await cookieUpstash('LRANGE', COOKIE_KEY_HISTORY, 0, AMP_HISTORY_MAX - 1);
+    res.json({ history: parseAmpHistory(raw) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/amplify/cookie/delete-apps
+app.post('/api/amplify/cookie/delete-apps', requireAmplifyKey, async (req, res) => {
+  const { appIds } = req.body || {};
+  if (!Array.isArray(appIds) || !appIds.length) return res.status(400).json({ error: '"appIds" required' });
+  try {
+    const raw = await cookieUpstash('LRANGE', COOKIE_KEY_HISTORY, 0, AMP_HISTORY_MAX - 1);
+    for (const entry of (raw || [])) {
+      if (appIds.some(id => entry.includes(id))) await cookieUpstash('LREM', COOKIE_KEY_HISTORY, 0, entry);
+    }
+  } catch { /* non-fatal */ }
+  const results = await Promise.all(appIds.map(async appId => {
+    try {
+      await amplifyClient.send(new DeleteAmplifyAppCommand({ appId }));
+      return { appId, success: true };
+    } catch (err) { return { appId, success: false, error: err.message }; }
+  }));
+  res.json({ results });
+});
+
+// ─── end Amplify Combined Automation ─────────────────────────────────────────
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
