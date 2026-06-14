@@ -1788,14 +1788,21 @@ const wafClient     = new WAFV2Client({ region: 'us-east-1', credentials: AMPLIF
 
 // ── Upstash helpers ───────────────────────────────────────────────────────────
 async function upstashReq(baseUrl, token, args) {
-  const res  = await fetch(baseUrl, {
-    method:  'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body:    JSON.stringify(args),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(`Upstash ${res.status}: ${JSON.stringify(data)}`);
-  return data.result;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const res  = await fetch(baseUrl, {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify(args),
+      signal:  controller.signal,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(`Upstash ${res.status}: ${JSON.stringify(data)}`);
+    return data.result;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 const phpUpstash    = (...a) => upstashReq(PHP_UPSTASH_URL,    PHP_UPSTASH_TOKEN,    a);
 const cookieUpstash = (...a) => upstashReq(COOKIE_UPSTASH_URL, COOKIE_UPSTASH_TOKEN, a);
