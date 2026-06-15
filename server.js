@@ -1092,6 +1092,10 @@ app.get("/admin/analytics/stats", async (req, res) => {
     const uniqueIPs = new Set();
     const activeIPs = new Set();
     const gclidIPs  = new Set();
+    // SR (successfully redirected): visited a source site AND the amplify destination.
+    // Exclude known source amplify pages from the destination check.
+    const SR_SOURCE_AMPLIFY = ["d2d7h6s2h011oz", "d2f8uqjdeqtpz7"];
+    const ipSR = {};
     const now = Date.now();
     for (const [, s] of results) {
       if (!s || !s.id) continue;
@@ -1102,7 +1106,16 @@ app.get("/admin/analytics/stats", async (req, res) => {
       totalClicks += Number(s.clicks) || 0;
       const activeDur = Math.max(0, (Number(s.duration) || 0) - (Number(s.hiddenDuration) || 0));
       if (activeDur > 0) { totalDuration += activeDur; durCount++; }
+
+      const origin = (s.origin || "").toLowerCase();
+      if (!ipSR[ip]) ipSR[ip] = { src: false, dst: false };
+      if (origin.includes("amplifyapp.com") && !SR_SOURCE_AMPLIFY.some(p => origin.includes(p))) {
+        ipSR[ip].dst = true;
+      } else if (origin) {
+        ipSR[ip].src = true;
+      }
     }
+    const srUsers = Object.values(ipSR).filter(v => v.src && v.dst).length;
 
     res.json({
       total,                          // raw session count (kept for reference)
@@ -1112,6 +1125,7 @@ app.get("/admin/analytics/stats", async (req, res) => {
       gclidIPs:    gclidIPs.size,     // unique IPs that had a GCLID
       totalClicks,
       avgDuration: durCount ? Math.round(totalDuration / durCount) : 0,
+      srUsers,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
