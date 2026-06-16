@@ -1939,13 +1939,14 @@ const STEP_NAMES = [
   'Wait for PHP build',             // 3
   'Attach WAF (PHP)',               // 4
   'Wait 4 min (PHP WAF)',           // 5
-  'Download Cookie frontend',       // 6
-  'Create Cookie Amplify App',      // 7
-  'Deploy Cookie frontend',         // 8
-  'Wait for Cookie build',          // 9
-  'Attach WAF (Cookie)',            // 10
-  'Wait 4 min (Cookie WAF)',        // 11
-  'Update Redis (both URLs)',        // 12
+  'Update PHP Redis URL',           // 6
+  'Download Cookie frontend',       // 7
+  'Create Cookie Amplify App',      // 8
+  'Deploy Cookie frontend',         // 9
+  'Wait for Cookie build',          // 10
+  'Attach WAF (Cookie)',            // 11
+  'Wait 4 min (Cookie WAF)',        // 12
+  'Update Cookie Redis URL',        // 13
 ];
 
 // ── Main combined job ─────────────────────────────────────────────────────────
@@ -1984,44 +1985,47 @@ async function runCombinedJob(jobId) {
     // 4-5. Attach + verify WAF (PHP)
     await attachAndVerifyWaf(phpAppId, WAF_ARN_PHP, onProgress, 4);
 
-    // 6. Download Cookie frontend
+    // 6. Update PHP Redis URL
     await onProgress(6, 'in_progress');
+    const nowPhp = new Date().toISOString();
+    const oldPhpUrl = await phpUpstash('GET', PHP_KEY_URL);
+    if (oldPhpUrl && oldPhpUrl !== phpAppUrl) {
+      await phpUpstash('LPUSH', PHP_KEY_HISTORY, JSON.stringify({ url: oldPhpUrl, createdAt: nowPhp }));
+      await phpUpstash('LTRIM', PHP_KEY_HISTORY, 0, AMP_HISTORY_MAX - 1);
+    }
+    await phpUpstash('MSET', PHP_KEY_URL, phpAppUrl, PHP_KEY_TS, nowPhp);
+    await onProgress(6, 'completed');
+
+    // 7. Download Cookie frontend
+    await onProgress(7, 'in_progress');
     const cookieZip = FRONTEND_REPO_COOKIE === FRONTEND_REPO_PHP
       ? phpZip
       : await downloadFrontendZip(FRONTEND_REPO_COOKIE);
-    await onProgress(6, 'completed', `${Math.round(cookieZip.length / 1024)}KB`);
+    await onProgress(7, 'completed', `${Math.round(cookieZip.length / 1024)}KB`);
 
-    // 7-9. Create + deploy Cookie app
+    // 8-10. Create + deploy Cookie app
     const { appId: cookieAppId, appUrl: cookieAppUrl } =
-      await createAndDeployApp('cookie', cookieZip, state, 7, onProgress);
+      await createAndDeployApp('cookie', cookieZip, state, 8, onProgress);
     state.cookieAppId  = cookieAppId;
     state.cookieAppUrl = cookieAppUrl;
     await saveJob(state);
 
-    // 10-11. Attach WAF (Cookie) + wait 4 min
-    await attachAndVerifyWaf(cookieAppId, WAF_ARN_COOKIE, onProgress, 10);
+    // 11-12. Attach WAF (Cookie) + wait 4 min
+    await attachAndVerifyWaf(cookieAppId, WAF_ARN_COOKIE, onProgress, 11);
 
-    // 12. Update both Redis databases simultaneously
-    await onProgress(12, 'in_progress');
-    const now = new Date().toISOString();
-
-    const oldPhpUrl = await phpUpstash('GET', PHP_KEY_URL);
-    if (oldPhpUrl && oldPhpUrl !== phpAppUrl) {
-      await phpUpstash('LPUSH', PHP_KEY_HISTORY, JSON.stringify({ url: oldPhpUrl, createdAt: now }));
-      await phpUpstash('LTRIM', PHP_KEY_HISTORY, 0, AMP_HISTORY_MAX - 1);
-    }
-    await phpUpstash('MSET', PHP_KEY_URL, phpAppUrl, PHP_KEY_TS, now);
-
+    // 13. Update Cookie Redis URL
+    await onProgress(13, 'in_progress');
+    const nowCookie = new Date().toISOString();
     const oldCookieUrl = await cookieUpstash('GET', COOKIE_KEY_URL);
     if (oldCookieUrl && oldCookieUrl !== cookieAppUrl) {
-      await cookieUpstash('LPUSH', COOKIE_KEY_HISTORY, JSON.stringify({ url: oldCookieUrl, createdAt: now }));
+      await cookieUpstash('LPUSH', COOKIE_KEY_HISTORY, JSON.stringify({ url: oldCookieUrl, createdAt: nowCookie }));
       await cookieUpstash('LTRIM', COOKIE_KEY_HISTORY, 0, AMP_HISTORY_MAX - 1);
     }
-    await cookieUpstash('MSET', COOKIE_KEY_URL, cookieAppUrl, COOKIE_KEY_TS, now);
+    await cookieUpstash('MSET', COOKIE_KEY_URL, cookieAppUrl, COOKIE_KEY_TS, nowCookie);
+    await onProgress(13, 'completed');
 
-    await onProgress(12, 'completed');
     state.status     = 'completed';
-    state.finishedAt = now;
+    state.finishedAt = nowCookie;
     await saveJob(state);
     console.log(`[amplify-job] ${jobId} done — PHP: ${phpAppUrl} | Cookie: ${cookieAppUrl}`);
 
