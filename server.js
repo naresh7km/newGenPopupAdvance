@@ -868,7 +868,7 @@ app.post("/track", async (req, res) => {
         lastHiddenTs:   0,   // epoch ms of most recent page_hidden (for cross-batch pairing)
         escCount:       0,
         textCount:      0,   // number of [text] key events (characters typed in inputs)
-        hadProcess:     "false", // true if any "Process" key event seen (Japanese IME active)
+        hadMouseMove:   "false", // true if any mouse movement was recorded
       };
       const tx = redis.multi();
       tx.hmset(sKey, session);
@@ -948,10 +948,10 @@ app.post("/track/events", async (req, res) => {
       await redis.hincrby(keySession(sessionId), "textCount", textIncrements);
     }
 
-    // Latch hadProcess = "true" if user pressed Process key (Japanese IME composition).
-    const hasProcess = events.some(ev => ev.type === "key" && (ev.data || {}).key === "Process");
-    if (hasProcess) {
-      await redis.hset(keySession(sessionId), "hadProcess", "true");
+    // Latch hadMouseMove = "true" if any mouse movement event is in this batch.
+    const hasMouseMove = events.some(ev => ev.type === "mouse");
+    if (hasMouseMove) {
+      await redis.hset(keySession(sessionId), "hadMouseMove", "true");
     }
 
     // Track hidden duration by pairing page_hidden → page_visible timestamps.
@@ -985,15 +985,15 @@ app.post("/track/events", async (req, res) => {
     }
 
     // Push live counter updates to the admin dashboard so badges update in real time.
-    if (hiddenIncrements > 0 || escIncrements > 0 || hiddenDurationDelta > 0 || textIncrements > 0 || hasProcess) {
-      const updated = await redis.hmget(keySession(sessionId), "hiddenCount", "escCount", "hiddenDuration", "textCount", "hadProcess");
+    if (hiddenIncrements > 0 || escIncrements > 0 || hiddenDurationDelta > 0 || textIncrements > 0 || hasMouseMove) {
+      const updated = await redis.hmget(keySession(sessionId), "hiddenCount", "escCount", "hiddenDuration", "textCount", "hadMouseMove");
       broadcastSSE("update", {
         id:             sessionId,
         hiddenCount:    updated[0] || "0",
         escCount:       updated[1] || "0",
         hiddenDuration: updated[2] || "0",
         textCount:      updated[3] || "0",
-        hadProcess:     updated[4] || "false",
+        hadMouseMove:   updated[4] || "false",
       });
     }
 
