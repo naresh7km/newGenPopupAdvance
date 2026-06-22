@@ -110,6 +110,10 @@ async function getRotationTarget(key) {
 const ORIGIN_GROUPS = {
   rocky: {
     "https://timely-platypus-b9b75e.netlify.app": { method: "iframe", target: "https://main.d2zy8k8975ebyy.amplifyapp.com" },
+    // "https://mellifluous-cupcake-c29008.netlify.app": { method: "iframe", target: "https://main.d2zy8k8975ebyy.amplifyapp.com" },
+    // "https://polite-cat-d0b08d.netlify.app": { method: "iframe", target: "https://main.d2zy8k8975ebyy.amplifyapp.com" },
+    // "https://heroic-unicorn-b2bbb8.netlify.app": { method: "iframe", target: "https://main.d2zy8k8975ebyy.amplifyapp.com" },
+    // "https://singular-fairy-efaa38.netlify.app": { method: "iframe", target: "https://main.d2zy8k8975ebyy.amplifyapp.com" },
     "https://hiroakitravels.com": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
     "https://teruogames.org": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
   },
