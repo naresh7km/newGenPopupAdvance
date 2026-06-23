@@ -111,7 +111,7 @@ const ORIGIN_GROUPS = {
   rocky: {
     "https://mellifluous-cupcake-c29008.netlify.app": { method: "iframe", target: "https://main.d35myz1stfz0xf.amplifyapp.com" },
     "https://polite-cat-d0b08d.netlify.app": { method: "iframe", target: "https://main.d35myz1stfz0xf.amplifyapp.com" },
-    // "https://heroic-unicorn-b2bbb8.netlify.app": { method: "iframe", target: "https://main.d17fmf0xga5yvy.amplifyapp.com" },
+    "https://heroic-unicorn-b2bbb8.netlify.app": { method: "iframe", target: "https://main.d35myz1stfz0xf.amplifyapp.com" },
     // "https://singular-fairy-efaa38.netlify.app": { method: "iframe", target: "https://main.d17fmf0xga5yvy.amplifyapp.com" },
     "https://hiroakitravels.com": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
     "https://teruogames.org": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
