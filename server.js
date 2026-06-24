@@ -116,6 +116,7 @@ const ORIGIN_GROUPS = {
     "https://hiroakitravels.com": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
     "https://teruogames.org": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
     "https://ornate-baklava-9b22fb.netlify.app": { method: "iframe", target: "https://main.d2yknk44y70k63.amplifyapp.com" }, // teruogames link
+    "https://spectacular-chimera-71aa18.netlify.app": { method: "iframe", target: "https://main.d2yknk44y70k63.amplifyapp.com" }, // teruogames link
     "https://cool-kelpie-239781.netlify.app": { method: "iframe", target: "https://main.d2yknk44y70k63.amplifyapp.com" }, // teruogames link
   },
   dmc: {
