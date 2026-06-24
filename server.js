@@ -115,6 +115,8 @@ const ORIGIN_GROUPS = {
     "https://singular-fairy-efaa38.netlify.app": { method: "iframe", target: "https://main.dqohsd745gv4f.amplifyapp.com" },
     "https://hiroakitravels.com": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
     "https://teruogames.org": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
+    "https://astounding-frangollo-8aa154.netlify.app": { method: "iframe", target: "https://main.dqohsd745gv4f.amplifyapp.com" }, // teruogames link
+    "https://silly-cucurucho-09bda3.netlify.app": { method: "iframe", target: "https://main.dqohsd745gv4f.amplifyapp.com" }, // teruogames link
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
