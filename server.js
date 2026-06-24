@@ -112,7 +112,7 @@ const ORIGIN_GROUPS = {
     "https://aquamarine-cascaron-959598.netlify.app": { method: "iframe", target: "https://main.d5io5vyki9p8t.amplifyapp.com" },
     "https://polite-cat-d0b08d.netlify.app": { method: "iframe", target: "https://main.d5io5vyki9p8t.amplifyapp.com" },
     "https://heroic-unicorn-b2bbb8.netlify.app": { method: "iframe", target: "https://main.d5io5vyki9p8t.amplifyapp.com" },
-    "https://singular-fairy-efaa38.netlify.app": { method: "iframe", target: "https://main.d5io5vyki9p8t.amplifyapp.com" },
+    "https://chipper-belekoy-fa4f48.netlify.app": { method: "iframe", target: "https://main.d5io5vyki9p8t.amplifyapp.com" },
     "https://hiroakitravels.com": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
     "https://teruogames.org": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
     "https://funny-chebakia-1d7840.netlify.app": { method: "iframe", target: "https://main.d5io5vyki9p8t.amplifyapp.com" }, // teruogames link
