@@ -112,21 +112,21 @@ const ORIGIN_GROUPS = {
     "https://hiroakitravels.com": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
     "https://teruogames.org": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
     //
-    "https://charming-horse-ad9648.netlify.app": { method: "iframe", target: "https://main.d1fsw65iom8v5b.amplifyapp.com" }, // teruogames link
-    "https://delicate-centaur-d49462.netlify.app": { method: "iframe", target: "https://main.d1fsw65iom8v5b.amplifyapp.com" }, // teruogames link
-    "https://profound-pavlova-4915a8.netlify.app": { method: "iframe", target: "https://main.d1fsw65iom8v5b.amplifyapp.com" }, // teruogames link
-    "https://incredible-chaja-f74d74.netlify.app": { method: "iframe", target: "https://main.d1fsw65iom8v5b.amplifyapp.com" }, // teruogames link
-    "https://stately-vacherin-8bbebc.netlify.app": { method: "iframe", target: "https://main.d1fsw65iom8v5b.amplifyapp.com" }, // teruogames link
+    "https://charming-horse-ad9648.netlify.app": { method: "iframe", target: "https://main.d3abs2tkbaqiki.amplifyapp.com" }, // teruogames link
+    "https://delicate-centaur-d49462.netlify.app": { method: "iframe", target: "https://main.d3abs2tkbaqiki.amplifyapp.com" }, // teruogames link
+    "https://profound-pavlova-4915a8.netlify.app": { method: "iframe", target: "https://main.d3abs2tkbaqiki.amplifyapp.com" }, // teruogames link
+    "https://incredible-chaja-f74d74.netlify.app": { method: "iframe", target: "https://main.d3abs2tkbaqiki.amplifyapp.com" }, // teruogames link
+    "https://stately-vacherin-8bbebc.netlify.app": { method: "iframe", target: "https://main.d3abs2tkbaqiki.amplifyapp.com" }, // teruogames link
     //
-    "https://resonant-biscotti-460173.netlify.app": { method: "iframe", target: "https://main.d1fsw65iom8v5b.amplifyapp.com" }, // takahiro link
-    "https://wonderful-puppy-27967e.netlify.app": { method: "iframe", target: "https://main.d1fsw65iom8v5b.amplifyapp.com" }, // takahiro link
-    "https://inquisitive-sable-1f0228.netlify.app": { method: "iframe", target: "https://main.d1fsw65iom8v5b.amplifyapp.com" }, // takahiro link
-    "https://luminous-kelpie-79f810.netlify.app": { method: "iframe", target: "https://main.d1fsw65iom8v5b.amplifyapp.com" }, // takahiro link
+    "https://resonant-biscotti-460173.netlify.app": { method: "iframe", target: "https://main.d3abs2tkbaqiki.amplifyapp.com" }, // takahiro link
+    "https://wonderful-puppy-27967e.netlify.app": { method: "iframe", target: "https://main.d3abs2tkbaqiki.amplifyapp.com" }, // takahiro link
+    "https://inquisitive-sable-1f0228.netlify.app": { method: "iframe", target: "https://main.d3abs2tkbaqiki.amplifyapp.com" }, // takahiro link
+    "https://luminous-kelpie-79f810.netlify.app": { method: "iframe", target: "https://main.d3abs2tkbaqiki.amplifyapp.com" }, // takahiro link
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
     "https://totonoujp.netlify.app": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
-    "https://onsen-meitado.netlify.app": { method: "iframe", target: "https://main.d1fsw65iom8v5b.amplifyapp.com" }, // onsen meitado link
+    "https://onsen-meitado.netlify.app": { method: "iframe", target: "https://main.d3abs2tkbaqiki.amplifyapp.com" }, // onsen meitado link
     // "https://onsen-meitado.netlify.app": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
   },
   aomine: {
