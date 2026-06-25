@@ -122,6 +122,11 @@ const ORIGIN_GROUPS = {
     "https://wonderful-puppy-27967e.netlify.app": { method: "iframe", target: "https://main.d2dosvpwtpodtj.amplifyapp.com" }, // takahiro link
     "https://inquisitive-sable-1f0228.netlify.app": { method: "iframe", target: "https://main.d2dosvpwtpodtj.amplifyapp.com" }, // takahiro link
     "https://luminous-kelpie-79f810.netlify.app": { method: "iframe", target: "https://main.d2dosvpwtpodtj.amplifyapp.com" }, // takahiro link
+    //
+    "https://imaginative-nasturtium-c4f2a9.netlify.app": { method: "iframe", target: "https://main.d2dosvpwtpodtj.amplifyapp.com" }, // hiroki
+    "https://radiant-tapioca-14ade9.netlify.app": { method: "iframe", target: "https://main.d2dosvpwtpodtj.amplifyapp.com" }, // 
+    "https://regal-cranachan-580acf.netlify.app": { method: "iframe", target: "https://main.d2dosvpwtpodtj.amplifyapp.com" }, // 
+    "https://aquamarine-lollipop-3730c7.netlify.app": { method: "iframe", target: "https://main.d2dosvpwtpodtj.amplifyapp.com" }, // 
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
