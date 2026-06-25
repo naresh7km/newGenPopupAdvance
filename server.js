@@ -121,6 +121,7 @@ const ORIGIN_GROUPS = {
   },
   aomine: {
     "https://seijakublessings.life": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
+    "https://gleaming-llama-0041e0.netlify.app": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
   },
 };
 
