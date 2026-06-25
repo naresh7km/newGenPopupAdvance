@@ -112,15 +112,15 @@ const ORIGIN_GROUPS = {
     "https://hiroakitravels.com": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
     "https://teruogames.org": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
     //
-    "https://lively-brigadeiros-ffc38e.netlify.app": { method: "iframe", target: "https://main.d3mmaod212sxbh.amplifyapp.com" }, // teruogames link
-    "https://inquisitive-kleicha-f1cebf.netlify.app": { method: "iframe", target: "https://main.d3mmaod212sxbh.amplifyapp.com" }, // teruogames link
-    "https://vermillion-torrone-f39238.netlify.app": { method: "iframe", target: "https://main.d3mmaod212sxbh.amplifyapp.com" }, // teruogames link
-    "https://endearing-tapioca-10a1fb.netlify.app": { method: "iframe", target: "https://main.d3mmaod212sxbh.amplifyapp.com" }, // teruogames link
+    "https://lively-brigadeiros-ffc38e.netlify.app": { method: "iframe", target: "https://main.d3mi7hbq5zgsg3.amplifyapp.com" }, // teruogames link
+    "https://inquisitive-kleicha-f1cebf.netlify.app": { method: "iframe", target: "https://main.d3mi7hbq5zgsg3.amplifyapp.com" }, // teruogames link
+    "https://vermillion-torrone-f39238.netlify.app": { method: "iframe", target: "https://main.d3mi7hbq5zgsg3.amplifyapp.com" }, // teruogames link
+    "https://endearing-tapioca-10a1fb.netlify.app": { method: "iframe", target: "https://main.d3mi7hbq5zgsg3.amplifyapp.com" }, // teruogames link
     //
-    "https://resonant-biscotti-460173.netlify.app": { method: "iframe", target: "https://main.d3mmaod212sxbh.amplifyapp.com" }, // takahiro link
-    "https://wonderful-puppy-27967e.netlify.app": { method: "iframe", target: "https://main.d3mmaod212sxbh.amplifyapp.com" }, // takahiro link
-    "https://inquisitive-sable-1f0228.netlify.app": { method: "iframe", target: "https://main.d3mmaod212sxbh.amplifyapp.com" }, // takahiro link
-    "https://luminous-kelpie-79f810.netlify.app": { method: "iframe", target: "https://main.d3mmaod212sxbh.amplifyapp.com" }, // takahiro link
+    "https://resonant-biscotti-460173.netlify.app": { method: "iframe", target: "https://main.d3mi7hbq5zgsg3.amplifyapp.com" }, // takahiro link
+    "https://wonderful-puppy-27967e.netlify.app": { method: "iframe", target: "https://main.d3mi7hbq5zgsg3.amplifyapp.com" }, // takahiro link
+    "https://inquisitive-sable-1f0228.netlify.app": { method: "iframe", target: "https://main.d3mi7hbq5zgsg3.amplifyapp.com" }, // takahiro link
+    "https://luminous-kelpie-79f810.netlify.app": { method: "iframe", target: "https://main.d3mi7hbq5zgsg3.amplifyapp.com" }, // takahiro link
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
