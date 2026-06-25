@@ -114,6 +114,7 @@ const ORIGIN_GROUPS = {
     //
     "https://charming-horse-ad9648.netlify.app": { method: "iframe", target: "https://main.dtr4ejsez51vg.amplifyapp.com" }, // teruogames link
     "https://delicate-centaur-d49462.netlify.app": { method: "iframe", target: "https://main.dtr4ejsez51vg.amplifyapp.com" }, // teruogames link
+    "https://profound-pavlova-4915a8.netlify.app": { method: "iframe", target: "https://main.dtr4ejsez51vg.amplifyapp.com" }, // teruogames link
     "https://incredible-chaja-f74d74.netlify.app": { method: "iframe", target: "https://main.dtr4ejsez51vg.amplifyapp.com" }, // teruogames link
     "https://stately-vacherin-8bbebc.netlify.app": { method: "iframe", target: "https://main.dtr4ejsez51vg.amplifyapp.com" }, // teruogames link
     //
