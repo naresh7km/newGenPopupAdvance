@@ -115,7 +115,7 @@ const ORIGIN_GROUPS = {
     "https://charming-horse-ad9648.netlify.app/": { method: "iframe", target: "https://main.d1acg0mc1xvx6j.amplifyapp.com" }, // teruogames link
     "https://delicate-centaur-d49462.netlify.app": { method: "iframe", target: "https://main.d1acg0mc1xvx6j.amplifyapp.com" }, // teruogames link
     "https://incredible-chaja-f74d74.netlify.app": { method: "iframe", target: "https://main.d1acg0mc1xvx6j.amplifyapp.com" }, // teruogames link
-    "https://stately-vacherin-8bbebc.netlify.app/": { method: "iframe", target: "https://main.d1acg0mc1xvx6j.amplifyapp.com" }, // teruogames link
+    "https://stately-vacherin-8bbebc.netlify.app": { method: "iframe", target: "https://main.d1acg0mc1xvx6j.amplifyapp.com" }, // teruogames link
     //
     "https://resonant-biscotti-460173.netlify.app": { method: "iframe", target: "https://main.d1acg0mc1xvx6j.amplifyapp.com" }, // takahiro link
     "https://wonderful-puppy-27967e.netlify.app": { method: "iframe", target: "https://main.d1acg0mc1xvx6j.amplifyapp.com" }, // takahiro link
