@@ -111,22 +111,7 @@ const ORIGIN_GROUPS = {
   rocky: {
     "https://hiroakitravels.com": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
     "https://teruogames.org": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
-    //
-    "https://charming-horse-ad9648.netlify.app": { method: "iframe", target: "https://main.d3qwc022gsxlg3.amplifyapp.com" }, // teruogames link
-    "https://delicate-centaur-d49462.netlify.app": { method: "iframe", target: "https://main.d3qwc022gsxlg3.amplifyapp.com" }, // teruogames link
-    "https://profound-pavlova-4915a8.netlify.app": { method: "iframe", target: "https://main.d3qwc022gsxlg3.amplifyapp.com" }, // teruogames link
-    "https://incredible-chaja-f74d74.netlify.app": { method: "iframe", target: "https://main.d3qwc022gsxlg3.amplifyapp.com" }, // teruogames link
-    "https://stately-vacherin-8bbebc.netlify.app": { method: "iframe", target: "https://main.d3qwc022gsxlg3.amplifyapp.com" }, // teruogames link
-    //
-    "https://resonant-biscotti-460173.netlify.app": { method: "iframe", target: "https://main.d3qwc022gsxlg3.amplifyapp.com" }, // takahiro link
-    "https://wonderful-puppy-27967e.netlify.app": { method: "iframe", target: "https://main.d3qwc022gsxlg3.amplifyapp.com" }, // takahiro link
-    "https://inquisitive-sable-1f0228.netlify.app": { method: "iframe", target: "https://main.d3qwc022gsxlg3.amplifyapp.com" }, // takahiro link
-    "https://luminous-kelpie-79f810.netlify.app": { method: "iframe", target: "https://main.d3qwc022gsxlg3.amplifyapp.com" }, // takahiro link
-    //
-    "https://imaginative-nasturtium-c4f2a9.netlify.app": { method: "iframe", target: "https://main.d3qwc022gsxlg3.amplifyapp.com" }, // hiroki
-    "https://radiant-tapioca-14ade9.netlify.app": { method: "iframe", target: "https://main.d3qwc022gsxlg3.amplifyapp.com" }, // 
-    "https://regal-cranachan-580acf.netlify.app": { method: "iframe", target: "https://main.d3qwc022gsxlg3.amplifyapp.com" }, // 
-    "https://aquamarine-lollipop-3730c7.netlify.app": { method: "iframe", target: "https://main.d3qwc022gsxlg3.amplifyapp.com" }, // 
+    "https://takahirofoodfarm.shop": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
