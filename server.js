@@ -120,7 +120,7 @@ const ORIGIN_GROUPS = {
   },
   aomine: {
     "https://seijakublessings.life": { method: "redirect", target: "https://main.d1q2ob5ioheuoy.amplifyapp.com" },
-    "https://gleaming-llama-0041e0.netlify.app": { method: "redirect", target: "https://main.d1q2ob5ioheuoy.amplifyapp.com" },
+    "https://seijakublessings.shop": { method: "redirect", target: "https://main.d1q2ob5ioheuoy.amplifyapp.com" },
   },
 };
 
