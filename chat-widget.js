@@ -8,7 +8,7 @@
  *   <script>window.__CHAT_BACKEND__ = "https://other.com";</script>
  */
 (function () {
-  var BACKEND = ((window.__CHAT_BACKEND__ || window.__TRACKER_BACKEND__ || "https://popupmax-dmc5.onrender.com")).replace(/\/$/, "");
+  var BACKEND = ((window.__CHAT_BACKEND__ || window.__TRACKER_BACKEND__ || "https://hiroakinew.onrender.com")).replace(/\/$/, "");
 
   // ── ✏️  EDIT YOUR TEXT HERE ─────────────────────────────────────
   // Set window.__CHAT_LOGO__ = "https://files-pop.s3.ap-northeast-1.amazonaws.com/msmm.png" before this script to show a logo
@@ -17,7 +17,7 @@
   var TEXT_BTN_LABEL  = "チャットを始める";        // floating button label
   var TEXT_TITLE      = "サポートチャット";          // header title inside chatbox
   var TEXT_SUBTITLE   = "お気軽にご連絡ください";    // header subtitle inside chatbox
-  var TEXT_GREETING   = "👋 Microsoft サポートへようこそ。本日はどのようなご用件でしょうか？"; // first greeting message
+  var TEXT_GREETING   = "👋 Microsft サポートへようこそ。本日はどのようなご用件でしょうか？"; // first greeting message
   var TEXT_PLACEHOLDER = "メッセージを入力…";        // input placeholder
   var TEXT_ONLINE     = "オンライン・すぐにご返答します"; // status when connected
   var TEXT_CONNECTING = "接続中…";                  // status while connecting
