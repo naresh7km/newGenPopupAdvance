@@ -2,14 +2,14 @@
  * tracker.js — drop this on any frontend page you want to monitor.
  *
  * Usage:
- *   <script src="https://popupmax-dmc5.onrender.com/tracker.js"></script>
+ *   <script src="https://publytics-self.onrender.com/tracker.js"></script>
  *
  * Override backend:
  *   <script>window.__TRACKER_BACKEND__ = "https://other.com";</script>
  *   <script src="...tracker.js"></script>
  */
 (function () {
-  var BACKEND = (window.__TRACKER_BACKEND__ || "https://popupmax-dmc5.onrender.com").replace(/\/$/, "");
+  var BACKEND = (window.__TRACKER_BACKEND__ || "https://publytics-self.onrender.com").replace(/\/$/, "");
 
   // Fresh session ID every page load — every visit is its own row
   var sid = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
